@@ -1,5 +1,5 @@
 // 应用版本号：每次代码改动后递增（v主.次.YYMMDD-当日序号；同一天改 +1，跨天更新日期并把序号重置为 1）
-const APP_VERSION = 'v1.0.260812-6';
+const APP_VERSION = 'v1.0.260812-7';
 
 const NOTES = [
   { name: 'C', jianpu: '1', frequency: 261.63 },
@@ -287,6 +287,15 @@ let currentProgression = [];
 let activeProgressionChord = null;
 let activeManualNotes = [];
 
+// ===== 音频情感识别：播放 / 录音 / 保存（全部本地）=====
+let currentAudioBuffer = null;   // 最近一次载入（文件或录音）的解码后缓冲，用于播放 / 保存 / 分析
+let currentAudioSource = null;   // 当前正在播放的 BufferSource，便于单独停止
+let mediaRecorder = null;
+let recordedChunks = [];
+let recordStream = null;
+let recordTimer = null;
+let recordElapsed = 0;
+
 const rootSelect = document.getElementById('rootSelect');
 const chordTypeSelect = document.getElementById('chordTypeSelect');
 const emotionSelect = document.getElementById('emotionSelect');
@@ -304,6 +313,11 @@ const progressionList = document.getElementById('progressionList');
 const exampleList = document.getElementById('exampleList');
 const audioFileInput = document.getElementById('audioFileInput');
 const audioResult = document.getElementById('audioResult');
+const playAudioButton = document.getElementById('playAudioButton');
+const stopAudioButton = document.getElementById('stopAudioButton');
+const recordButton = document.getElementById('recordButton');
+const recordStatus = document.getElementById('recordStatus');
+const saveAudioButton = document.getElementById('saveAudioButton');
 const rhythmSelect = document.getElementById('rhythmSelect');
 const doodleCanvas = document.getElementById('doodleCanvas');
 const doodleCtx = doodleCanvas.getContext('2d');
@@ -393,6 +407,10 @@ function init() {
   document.getElementById('stopButton').addEventListener('click', stopAll);
   document.getElementById('stopManualButton').addEventListener('click', stopAll);
   audioFileInput.addEventListener('change', handleAudioFile);
+  playAudioButton.addEventListener('click', playCurrentAudio);
+  stopAudioButton.addEventListener('click', stopCurrentAudio);
+  recordButton.addEventListener('click', toggleRecording);
+  saveAudioButton.addEventListener('click', saveRecordingWav);
 
   updateDisplay();
   updateEmotionProgression();
@@ -1470,37 +1488,271 @@ function renderAudioResult(features, keyMode, mood, emotion) {
   `;
 }
 
+// 把 AudioBuffer 跑完本地频谱分析 → tension/brightness → 匹配情感 → 刷新进行与结果区。
+// 文件上传与录音两条入口共用，确保两者行为一致。
+function analyzeAndRenderBuffer(buffer) {
+  audioResult.innerHTML = '<p class="hint">正在本地分析频谱特征，请稍候…</p>';
+  window.setTimeout(() => {
+    let features;
+    try {
+      features = analyzeAudioFeatures(buffer);
+    } catch (err) {
+      audioResult.innerHTML = '<p class="hint audio-error">分析过程出错，请换一段音频再试。</p>';
+      return;
+    }
+    if (!features) {
+      audioResult.innerHTML = '<p class="hint audio-error">音频太短，无法提取有效特征。</p>';
+      return;
+    }
+    const keyMode = detectKeyMode(features.chroma);
+    const mood = featuresToMood(features, keyMode);
+    const match = findNearestEmotion(mood.tension, mood.brightness);
+    emotionSelect.value = String(match.index);
+    updateEmotionProgression();
+    renderAudioResult(features, keyMode, mood, match.emotion);
+  }, 20);
+}
+
 async function handleAudioFile(event) {
   const file = event.target.files && event.target.files[0];
   if (!file) return;
-  audioResult.innerHTML = '<p class="hint">正在解码与本地分析，请稍候…</p>';
+  audioResult.innerHTML = '<p class="hint">正在解码音频，请稍候…</p>';
   try {
     const arrayBuffer = await file.arrayBuffer();
     ensureAudioContext();
     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    // 延后一帧再计算，让"分析中"提示先渲染
-    window.setTimeout(() => {
-      let features;
-      try {
-        features = analyzeAudioFeatures(audioBuffer);
-      } catch (err) {
-        audioResult.innerHTML = '<p class="hint audio-error">分析过程出错，请换一段音频再试。</p>';
-        return;
-      }
-      if (!features) {
-        audioResult.innerHTML = '<p class="hint audio-error">音频太短，无法提取有效特征。</p>';
-        return;
-      }
-      const keyMode = detectKeyMode(features.chroma);
-      const mood = featuresToMood(features, keyMode);
-      const match = findNearestEmotion(mood.tension, mood.brightness);
-      emotionSelect.value = String(match.index);
-      updateEmotionProgression();
-      renderAudioResult(features, keyMode, mood, match.emotion);
-    }, 20);
+    currentAudioBuffer = audioBuffer;
+    stopCurrentAudio();
+    recordStatus.textContent = `已载入文件 ${file.name}（${Math.round(audioBuffer.duration)} s），可播放 / 保存，已自动识别`;
+    analyzeAndRenderBuffer(audioBuffer);
   } catch (err) {
     audioResult.innerHTML = '<p class="hint audio-error">无法解码该音频，请尝试 wav / mp3 / m4a / ogg 等常见格式。</p>';
   }
+}
+
+// ===== 音频播放 / 录音 / 保存（全部本地，浏览器内完成）=====
+
+function updateAudioActionButtons() {
+  const hasBuffer = !!currentAudioBuffer;
+  playAudioButton.disabled = !hasBuffer || currentAudioSource !== null;
+  stopAudioButton.disabled = currentAudioSource === null;
+  saveAudioButton.disabled = !hasBuffer;
+}
+
+// 用 Web Audio 播放当前持有的音频缓冲（文件载入或录音后的 AudioBuffer）。
+function playCurrentAudio() {
+  if (!currentAudioBuffer) return;
+  ensureAudioContext();
+  stopAll();
+  stopCurrentAudio();
+  const source = audioContext.createBufferSource();
+  source.buffer = currentAudioBuffer;
+  const gain = audioContext.createGain();
+  gain.gain.value = 0.9;
+  source.connect(gain);
+  gain.connect(audioContext.destination);
+  const endedSource = source;
+  source.addEventListener('ended', () => {
+    // 仅当这个源仍是当前源时才重置：连续播放或被其它操作 stop 时，
+    // 旧源的 ended 会晚于新源创建而异步触发，必须忽略，否则会误清状态。
+    if (currentAudioSource !== endedSource) return;
+    currentAudioSource = null;
+    document.body.classList.remove('is-playing');
+    updateAudioActionButtons();
+  });
+  source.start();
+  currentAudioSource = source;
+  trackActiveNode(source);
+  document.body.classList.add('is-playing');
+  updateAudioActionButtons();
+}
+
+function stopCurrentAudio() {
+  if (currentAudioSource) {
+    try { currentAudioSource.stop(); } catch (err) { /* 可能已自然结束 */ }
+    currentAudioSource = null;
+  }
+  document.body.classList.remove('is-playing');
+  updateAudioActionButtons();
+}
+
+// ---- 录音（MediaRecorder + getUserMedia，纯浏览器本地）----
+
+function toggleRecording() {
+  if (mediaRecorder && mediaRecorder.state === 'recording') {
+    mediaRecorder.stop();
+    return;
+  }
+  startRecording();
+}
+
+async function startRecording() {
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+    audioResult.innerHTML = '<p class="hint audio-error">当前浏览器不支持麦克风录音（需要 getUserMedia 与 MediaRecorder）。</p>';
+    return;
+  }
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (err) {
+    audioResult.innerHTML = `<p class="hint audio-error">无法访问麦克风：${err.message || err.name || '权限被拒绝'}。</p>`;
+    return;
+  }
+  ensureAudioContext();
+  stopAll();
+  stopCurrentAudio();
+  recordStream = stream;
+  recordedChunks = [];
+  const mimeType = pickRecordingMimeType();
+  let recorder;
+  try {
+    recorder = mimeType ? new MediaRecorder(stream, { mimeType }) : new MediaRecorder(stream);
+  } catch (err) {
+    audioResult.innerHTML = `<p class="hint audio-error">初始化录音失败：${err.message || err.name}。</p>`;
+    stopRecordStream();
+    return;
+  }
+  recorder.addEventListener('dataavailable', (e) => {
+    if (e.data && e.data.size > 0) recordedChunks.push(e.data);
+  });
+  recorder.addEventListener('stop', onRecordingStop);
+  recorder.addEventListener('error', (e) => {
+    recordStatus.textContent = '录音出错';
+    audioResult.innerHTML = `<p class="hint audio-error">录音出错：${e.error ? (e.error.message || e.error.name) : '未知错误'}。</p>`;
+    resetRecordingUI();
+    stopRecordStream();
+  });
+  mediaRecorder = recorder;
+  recordElapsed = 0;
+  recorder.start();
+  recordButton.textContent = '停止录音';
+  recordButton.classList.add('is-recording');
+  recordStatus.textContent = '录音中… 0:00';
+  saveAudioButton.disabled = true;
+  recordTimer = window.setInterval(() => {
+    recordElapsed += 1;
+    recordStatus.textContent = `录音中… ${formatRecordTime(recordElapsed)}`;
+    if (recordElapsed >= 30 && mediaRecorder && mediaRecorder.state === 'recording') {
+      mediaRecorder.stop();
+    }
+  }, 1000);
+}
+
+function onRecordingStop() {
+  if (recordTimer) { window.clearInterval(recordTimer); recordTimer = null; }
+  resetRecordingUI();
+  stopRecordStream();
+  const type = (mediaRecorder && mediaRecorder.mimeType) || 'audio/webm';
+  const blob = new Blob(recordedChunks, { type });
+  recordedChunks = [];
+  if (blob.size === 0) {
+    recordStatus.textContent = '录音为空';
+    audioResult.innerHTML = '<p class="hint audio-error">未捕获到音频数据，请检查麦克风后重试。</p>';
+    return;
+  }
+  recordStatus.textContent = '已录音，正在解码与分析…';
+  decodeBlobAndAnalyze(blob);
+}
+
+function resetRecordingUI() {
+  recordButton.textContent = '开始录音';
+  recordButton.classList.remove('is-recording');
+}
+
+async function decodeBlobAndAnalyze(blob) {
+  try {
+    const arrayBuffer = await blob.arrayBuffer();
+    ensureAudioContext();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    currentAudioBuffer = audioBuffer;
+    stopCurrentAudio();
+    recordStatus.textContent = `已录音 ${formatRecordTime(Math.round(audioBuffer.duration))}，可播放 / 保存，已自动识别`;
+    analyzeAndRenderBuffer(audioBuffer);
+  } catch (err) {
+    recordStatus.textContent = '录音解码失败';
+    audioResult.innerHTML = `<p class="hint audio-error">录音解码失败：${err.message || err.name || '未知错误'}。</p>`;
+  }
+}
+
+function pickRecordingMimeType() {
+  const candidates = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', 'audio/ogg;codecs=opus'];
+  for (const type of candidates) {
+    if (window.MediaRecorder && MediaRecorder.isTypeSupported(type)) return type;
+  }
+  return '';
+}
+
+function stopRecordStream() {
+  if (recordStream) {
+    recordStream.getTracks().forEach((track) => track.stop());
+    recordStream = null;
+  }
+}
+
+function formatRecordTime(totalSeconds) {
+  const seconds = Math.max(0, Math.round(totalSeconds));
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+// 把当前音频缓冲（文件载入或录音）编码为 16-bit PCM WAV 并触发本地下载。
+function saveRecordingWav() {
+  if (!currentAudioBuffer) return;
+  const wavBlob = audioBufferToWav(currentAudioBuffer);
+  const url = URL.createObjectURL(wavBlob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  a.href = url;
+  a.download = `emotionchord_recording_${stamp}.wav`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
+}
+
+function audioBufferToWav(buffer) {
+  const numChannels = buffer.numberOfChannels;
+  const sampleRate = buffer.sampleRate;
+  const bitDepth = 16;
+  const bytesPerSample = bitDepth / 8;
+  const blockAlign = numChannels * bytesPerSample;
+  const numFrames = buffer.length;
+  const dataLength = numFrames * blockAlign;
+  const channelData = [];
+  for (let c = 0; c < numChannels; c++) channelData.push(buffer.getChannelData(c));
+
+  const out = new ArrayBuffer(44 + dataLength);
+  const view = new DataView(out);
+  const writeString = (offset, str) => {
+    for (let i = 0; i < str.length; i++) view.setUint8(offset + i, str.charCodeAt(i));
+  };
+  writeString(0, 'RIFF');
+  view.setUint32(4, 36 + dataLength, true);
+  writeString(8, 'WAVE');
+  writeString(12, 'fmt ');
+  view.setUint32(16, 16, true);
+  view.setUint16(20, 1, true);
+  view.setUint16(22, numChannels, true);
+  view.setUint32(24, sampleRate, true);
+  view.setUint32(28, sampleRate * blockAlign, true);
+  view.setUint16(32, blockAlign, true);
+  view.setUint16(34, bitDepth, true);
+  writeString(36, 'data');
+  view.setUint32(40, dataLength, true);
+  let offset = 44;
+  for (let i = 0; i < numFrames; i++) {
+    for (let c = 0; c < numChannels; c++) {
+      let sample = channelData[c][i];
+      if (sample > 1) sample = 1;
+      else if (sample < -1) sample = -1;
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+  }
+  return new Blob([out], { type: 'audio/wav' });
 }
 
 init();

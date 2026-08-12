@@ -26,8 +26,9 @@ echo.
 rem Open the browser after a short delay so the server is ready
 start "" /b powershell -NoProfile -Command "Start-Sleep -Seconds 2; Start-Process 'http://localhost:%PORT%'"
 
-rem Serve this directory (no project, isolated CPython via uv)
-"%UV%" run --no-project -m http.server %PORT%
+rem Serve this directory via a no-cache dev server (serve.py forces revalidation,
+rem so edits to app.js / styles.css / index.html always show up on refresh).
+"%UV%" run --no-project serve.py %PORT%
 
 echo.
 echo Server exited. If it failed to start, port %PORT% may already be in use.

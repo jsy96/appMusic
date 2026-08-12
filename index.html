@@ -66,12 +66,21 @@
         <h2>音频情感识别</h2>
         <span class="card-tag">analyze</span>
       </header>
-      <p class="hint">上传一段音频（wav / mp3 / m4a 等），系统会在浏览器本地分析频谱特征（频谱重心、频谱平坦度、能量、过零率）与调式，估算 tension / brightness 并自动匹配最接近的情感词、刷新下方的「情感和弦进行」。音频仅在本地处理，不会上传任何服务器。建议使用 30 秒以内的片段。</p>
+      <p class="hint">上传一段音频（wav / mp3 / m4a 等），或直接用浏览器录音，系统会在本地分析频谱特征（频谱重心、频谱平坦度、能量、过零率）与调式，估算 tension / brightness 并自动匹配最接近的情感词、刷新下方的「情感和弦进行」。音频仅在本地处理，不会上传任何服务器。建议使用 30 秒以内的片段。</p>
       <div class="card-controls">
         <label class="control control--single audio-file-control">
           <span class="control-label">选择音频文件</span>
           <input id="audioFileInput" type="file" accept="audio/*">
         </label>
+      </div>
+      <div class="audio-action-row">
+        <button id="playAudioButton" class="ghost-button" type="button" disabled>播放音频</button>
+        <button id="stopAudioButton" class="secondary-button" type="button" disabled>停止</button>
+      </div>
+      <div class="record-row">
+        <button id="recordButton" class="record-button ghost-button" type="button">开始录音</button>
+        <span id="recordStatus" class="record-status">未录音</span>
+        <button id="saveAudioButton" class="ghost-button" type="button" disabled>保存为 WAV</button>
       </div>
       <div id="audioResult" class="audio-result"></div>
     </section>
@@ -190,7 +199,7 @@
   <footer class="footer">
     <span>EmotionChord · 纯前端 Web Audio 应用</span>
     <span>选择情感 → 匹配和弦 → 生成简谱 → 连续演奏</span>
-    <span class="version-badge" id="versionBadge">v1.0.260812-6</span>
+    <span class="version-badge" id="versionBadge">v1.0.260812-7</span>
   </footer>
 
   <script src="app.js"></script>

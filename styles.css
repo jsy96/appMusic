@@ -360,30 +360,30 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   -webkit-backdrop-filter: blur(18px);
 }
 
-/* 各卡片用不同颜色框线区分（半透明强调色 + 同色微辉，让色相在深底上更清晰） */
+/* 各卡片用不同颜色框线区分（加粗描边 + 同色辉光，让色相在深底上更显眼） */
 .audio-card {
-  border-color: rgba(94, 234, 212, 0.5);        /* 青 */
-  box-shadow: var(--shadow-card), 0 0 30px rgba(94, 234, 212, 0.14);
+  border: 1.5px solid rgba(94, 234, 212, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(94, 234, 212, 0.3);
 }
 .doodle-card {
-  border-color: rgba(167, 139, 250, 0.5);       /* 紫 */
-  box-shadow: var(--shadow-card), 0 0 30px rgba(167, 139, 250, 0.14);
+  border: 1.5px solid rgba(167, 139, 250, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(167, 139, 250, 0.3);
 }
 .output-card {
-  border-color: rgba(255, 203, 107, 0.5);       /* 金 */
-  box-shadow: var(--shadow-card), 0 0 30px rgba(255, 203, 107, 0.14);
+  border: 1.5px solid rgba(255, 203, 107, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(255, 203, 107, 0.3);
 }
 .progression-card {
-  border-color: rgba(255, 107, 157, 0.5);       /* 品红 */
-  box-shadow: var(--shadow-card), 0 0 30px rgba(255, 107, 157, 0.14);
+  border: 1.5px solid rgba(255, 107, 157, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(255, 107, 157, 0.3);
 }
 .examples-card {
-  border-color: rgba(251, 113, 133, 0.5);       /* 玫红 */
-  box-shadow: var(--shadow-card), 0 0 30px rgba(251, 113, 133, 0.14);
+  border: 1.5px solid rgba(251, 113, 133, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(251, 113, 133, 0.3);
 }
 .reference {
-  border-color: rgba(108, 140, 255, 0.5);       /* 靛蓝（参考资料三张同色，作为同组） */
-  box-shadow: var(--shadow-card), 0 0 30px rgba(108, 140, 255, 0.14);
+  border: 1.5px solid rgba(108, 140, 255, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(108, 140, 255, 0.3);
 }
 
 .card-head {
@@ -1019,6 +1019,33 @@ input[type="file"]:hover { border-color: var(--border-gold); color: var(--text);
   font-size: 0.78rem;
 }
 .audio-error { color: var(--rose); }
+
+/* 音频卡片：播放 / 停止 与 录音 工具行 */
+.audio-action-row,
+.record-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+.record-status {
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+}
+/* 录音中：按钮变红 + 外环高亮，状态一目了然 */
+.record-button.is-recording {
+  color: #1a1408;
+  background: var(--rose);
+  border-color: transparent;
+  font-weight: 800;
+  box-shadow: 0 0 0 4px rgba(251, 113, 133, 0.22);
+}
+.record-button.is-recording:hover { background: var(--rose); }
+button:disabled { opacity: 0.45; cursor: not-allowed; }
+button:disabled:hover { transform: none; }
 
 /* ========== 减弱动效（无障碍） ========== */
 @media (prefers-reduced-motion: reduce) {
