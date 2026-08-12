@@ -41,19 +41,12 @@
           <li><span>02</span> 查看生成的和弦与简谱</li>
           <li><span>03</span> 点击对应卡片内的播放按钮试听</li>
         </ol>
-      </div>
-    </section>
-
-    <section class="panel controls" aria-label="根音选择">
-      <header class="card-head">
-        <h2><span class="step-badge">01</span> 根音 / 调性</h2>
-        <span class="card-tag">key</span>
-      </header>
-      <div class="controls-grid">
-        <label class="control control--single">
-          <span class="control-label">根音 / 调性</span>
-          <select id="rootSelect"></select>
-        </label>
+        <div class="hero-key">
+          <label class="control control--single">
+            <span class="control-label">根音 / 调性</span>
+            <select id="rootSelect"></select>
+          </label>
+        </div>
       </div>
     </section>
 
@@ -69,7 +62,7 @@
             <select id="chordTypeSelect"></select>
           </label>
           <label class="control control--range">
-            <span class="control-label">琶音速度 <em id="arpSpeedText">180 ms</em></span>
+            <span class="control-label">琶音时长 <em id="arpSpeedText">180 ms</em></span>
             <input id="arpSpeed" type="range" min="80" max="420" value="180">
           </label>
         </div>
@@ -79,6 +72,7 @@
         <div class="button-row">
           <button id="playButton" class="ghost-button" type="button">播放当前和弦</button>
           <button id="playArpButton" class="ghost-button" type="button">播放当前和弦琶音</button>
+          <button id="stopManualButton" class="secondary-button" type="button">停止</button>
         </div>
       </article>
 

@@ -248,6 +248,14 @@ h1 {
   font-size: 0.74rem;
 }
 
+/* 根音 / 调性：从独立面板移入 hero，置于步骤说明之下作为首选控件 */
+.hero-key {
+  position: relative;
+  z-index: 1;
+  margin-top: 24px;
+  max-width: 360px;
+}
+
 /* ========== 按钮 ========== */
 button {
   font: inherit;
@@ -355,9 +363,9 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   align-items: flex-start;
 }
 .control { display: grid; gap: 10px; flex: 1 1 200px; min-width: 160px; }
-/* 琶音速度：横向更宽，给滑块足够空间 */
+/* 琶音时长：横向更宽，给滑块足够空间 */
 .control--range { flex: 2 1 280px; }
-/* 卡片内嵌的控件行（当前和弦内的手动和弦类型 + 琶音速度 等） */
+/* 卡片内嵌的控件行（当前和弦内的手动和弦类型 + 琶音时长 等） */
 .card-controls {
   display: flex;
   flex-wrap: wrap;
@@ -801,6 +809,7 @@ input[type="range"]::-moz-range-thumb {
 .example-melody {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
   padding: 12px 14px;
   border-radius: var(--radius-sm);

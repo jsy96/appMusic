@@ -325,6 +325,7 @@ function init() {
   document.getElementById('playArpButton').addEventListener('click', playArpeggio);
   document.getElementById('playEmotionButton').addEventListener('click', playEmotionProgression);
   document.getElementById('stopButton').addEventListener('click', stopAll);
+  document.getElementById('stopManualButton').addEventListener('click', stopAll);
 
   updateDisplay();
   updateEmotionProgression();
@@ -767,7 +768,10 @@ function renderExamples(progression) {
     const melody = buildExampleMelody(progression, example.style, rootIndex);
     const melodyHtml = melody.map((note, noteIndex) => {
       const info = freqToNoteInfo(note.frequency);
-      return `<span class="jianpu-note example-note" data-example="${exampleIndex}" data-note="${noteIndex}" data-octave="${info.octave}">${info.jianpu}</span>`;
+      const noteHtml = `<span class="jianpu-note example-note" data-example="${exampleIndex}" data-note="${noteIndex}" data-octave="${info.octave}">${info.jianpu}</span>`;
+      // 每个小节（和弦）之间插入「|」分隔符，与「情感和弦进行」一致，方便看清每个节奏
+      const showDivider = noteIndex > 0 && note.chordIndex !== melody[noteIndex - 1].chordIndex;
+      return showDivider ? `<span class="measure-divider">|</span>${noteHtml}` : noteHtml;
     }).join('');
     return `<div class="example-card">
       <div class="example-info">
