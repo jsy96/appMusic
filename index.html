@@ -50,6 +50,13 @@
             <span class="control-label">节奏</span>
             <select id="rhythmSelect"></select>
           </label>
+          <label class="control control--toggle">
+            <span class="control-label">节拍鼓点</span>
+            <span class="toggle">
+              <input id="drumToggle" type="checkbox" checked>
+              <span class="toggle-track" aria-hidden="true"></span>
+            </span>
+          </label>
         </div>
       </div>
     </section>
@@ -94,11 +101,7 @@
         <div id="emotionStats" class="metric-row"></div>
         <div id="progressionOutput" class="progression-output"></div>
         <p id="progressionJianpu" class="progression-jianpu"></p>
-        <p class="hint">点击任一和弦名即可把它载入到「当前和弦」并试听，方便在此基础上单独修改或琶音试听。</p>
-        <label class="inline-range">
-          <span class="control-label">每音时长 <em id="progNoteDurationText">300 ms</em></span>
-          <input id="progNoteDuration" type="range" min="80" max="800" value="300">
-        </label>
+        <p class="hint">点击任一和弦名即可把它载入到「当前和弦」并试听。播放时会跟随顶部选择的「节奏」（BPM 与鼓点），与涂鸦旋律共享同一节拍栅格。</p>
         <div class="button-row">
           <button id="playEmotionButton" class="primary-button" type="button">播放情感进行</button>
           <button id="stopButton" class="secondary-button" type="button">停止</button>
@@ -118,10 +121,6 @@
           <span class="control-label">笔刷</span>
           <input id="brushSize" type="range" min="6" max="40" value="16">
           <em id="brushSizeText">16 px</em>
-        </label>
-        <label class="doodle-brush">
-          <span class="control-label">节拍鼓点</span>
-          <input id="drumToggle" type="checkbox" checked>
         </label>
         <button id="clearDoodleButton" class="ghost-button" type="button">清空画板</button>
       </div>
@@ -191,6 +190,7 @@
   <footer class="footer">
     <span>EmotionChord · 纯前端 Web Audio 应用</span>
     <span>选择情感 → 匹配和弦 → 生成简谱 → 连续演奏</span>
+    <span class="version-badge" id="versionBadge">v1.0.260812-1</span>
   </footer>
 
   <script src="app.js"></script>

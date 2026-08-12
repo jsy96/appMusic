@@ -260,6 +260,54 @@ h1 {
 }
 .hero-key .control { max-width: none; }
 
+/* 节拍鼓点开关：与根音 / 节奏并排置于 Hero，紧凑不撑满整格 */
+.control--toggle { min-width: 0; }
+.toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  height: 42px;
+  cursor: pointer;
+}
+.toggle input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.toggle-track {
+  width: 48px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid var(--border);
+  position: relative;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+.toggle-track::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+  transition: transform 0.2s ease;
+}
+.toggle input:checked + .toggle-track {
+  background: linear-gradient(90deg, var(--gold), var(--magenta));
+  border-color: transparent;
+}
+.toggle input:checked + .toggle-track::after {
+  transform: translateX(22px);
+}
+.toggle input:focus-visible + .toggle-track {
+  outline: 2px solid var(--gold);
+  outline-offset: 2px;
+}
+
 /* ========== 按钮 ========== */
 button {
   font: inherit;
@@ -378,12 +426,6 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 }
 /* 单控件不撑满整行（根音、情感词） */
 .control--single { max-width: 360px; }
-/* 情感进行卡片内嵌的「每音时长」滑块 */
-.inline-range {
-  display: grid;
-  gap: 10px;
-  margin-top: 18px;
-}
 .control-label {
   display: flex;
   align-items: center;
@@ -754,6 +796,20 @@ input[type="range"]::-moz-range-thumb {
   font-size: 0.82rem;
   border-top: 1px solid var(--border);
 }
+.version-badge {
+  margin-left: auto;
+  align-self: center;
+  padding: 5px 12px;
+  font-family: var(--font-mono);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--gold);
+  border: 1px solid var(--border-gold);
+  border-radius: 999px;
+  background: rgba(255, 203, 107, 0.08);
+  white-space: nowrap;
+}
 
 /* ========== 响应式 ========== */
 @media (max-width: 980px) {
@@ -1001,12 +1057,6 @@ input[type="file"]:hover { border-color: var(--border-gold); color: var(--text);
   color: var(--gold);
   font-family: var(--font-mono);
   font-weight: 800;
-}
-.doodle-brush input[type="checkbox"] {
-  width: 18px;
-  height: 18px;
-  accent-color: var(--gold);
-  cursor: pointer;
 }
 
 .doodle-canvas-wrap {

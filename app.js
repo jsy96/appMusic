@@ -1,3 +1,6 @@
+// 应用版本号：每次代码改动后递增（v主.次.YYMMDD-当日序号；同一天改 +1，跨天更新日期并把序号重置为 1）
+const APP_VERSION = 'v1.0.260812-3';
+
 const NOTES = [
   { name: 'C', jianpu: '1', frequency: 261.63 },
   { name: 'C# / Db', jianpu: '#1 / b2', frequency: 277.18 },
@@ -289,8 +292,6 @@ const chordTypeSelect = document.getElementById('chordTypeSelect');
 const emotionSelect = document.getElementById('emotionSelect');
 const arpSpeed = document.getElementById('arpSpeed');
 const arpSpeedText = document.getElementById('arpSpeedText');
-const progNoteDuration = document.getElementById('progNoteDuration');
-const progNoteDurationText = document.getElementById('progNoteDurationText');
 const chordName = document.getElementById('chordName');
 const jianpu = document.getElementById('jianpu');
 const noteNames = document.getElementById('noteNames');
@@ -313,6 +314,8 @@ const drumToggle = document.getElementById('drumToggle');
 const doodleMelody = document.getElementById('doodleMelody');
 
 function init() {
+  document.getElementById('versionBadge').textContent = APP_VERSION;
+
   NOTES.forEach((note, index) => {
     const option = document.createElement('option');
     option.value = String(index);
@@ -383,10 +386,6 @@ function init() {
     arpSpeedText.textContent = `${arpSpeed.value} ms`;
     updateRangeProgress(arpSpeed);
   });
-  progNoteDuration.addEventListener('input', () => {
-    progNoteDurationText.textContent = `${progNoteDuration.value} ms`;
-    updateRangeProgress(progNoteDuration);
-  });
 
   document.getElementById('playButton').addEventListener('click', playChord);
   document.getElementById('playArpButton').addEventListener('click', playArpeggio);
@@ -398,7 +397,6 @@ function init() {
   updateDisplay();
   updateEmotionProgression();
   updateRangeProgress(arpSpeed);
-  updateRangeProgress(progNoteDuration);
 
   // ===== 涂鸦旋律 / 节奏 初始化 =====
   RHYTHM_PRESETS.forEach((rhythm, index) => {
@@ -649,32 +647,46 @@ function playArpeggioOnce() {
 
 function playEmotionProgression() {
   updateEmotionProgression();
-  const chordGapSeconds = getProgressionChordGapSeconds();
-  const cycleMs = currentProgression.length * chordGapSeconds * 1000;
+  // 与涂鸦一致：以顶部「节奏」BPM 为准，32 步（2 小节）为一个循环 —— 节奏与情感和弦在此联动
+  const rhythm = RHYTHM_PRESETS[Number(rhythmSelect.value)];
+  const stepSeconds = 60 / rhythm.bpm / 4; // 每步 = 一个 16 分音符
+  const cycleMs = DOODLE_STEPS * stepSeconds * 1000;
   startLoopedPlayback(playEmotionProgressionOnce, cycleMs);
 }
 
 function playEmotionProgressionOnce() {
   ensureAudioContext();
-  const now = audioContext.currentTime;
-  // 每个音的延续时长 = 情感进行「每音时长」滑块（ms → 秒）
-  const noteDuration = Number(progNoteDuration.value) / 1000;
-  const chordGapSeconds = getProgressionChordGapSeconds();
+  const rhythm = RHYTHM_PRESETS[Number(rhythmSelect.value)];
+  const stepSeconds = 60 / rhythm.bpm / 4;
+  const baseTime = audioContext.currentTime + 0.06;
+  // 把 2 小节（32 步）均分给当前情感进行的每个和弦：4 和弦时各占 8 步 = 2 拍，与涂鸦和弦垫同栅格
+  const chordSteps = DOODLE_STEPS / Math.max(1, currentProgression.length);
+  const padSeconds = chordSteps * stepSeconds;
+  // 「每音时长」滑块改为控制每个和弦音的延续时长（断奏 ↔ 连奏），上限不超过一个和弦的时长
+  const noteDuration = padSeconds * 0.98;
 
   currentProgression.forEach((chord, chordIndex) => {
-    const chordStart = now + chordIndex * chordGapSeconds;
-    // 和弦式齐奏：该和弦所有音同时发声，每个音长度 = noteDuration
+    const chordStart = baseTime + chordIndex * padSeconds;
+    // 和弦式齐奏：该和弦所有音同时发声，起点严格对齐节奏栅格
     playChordObject(chord, chordStart, noteDuration, {
       source: 'progression',
       chordIndex,
       mode: 'chord'
     });
   });
-}
 
-function getProgressionChordGapSeconds() {
-  // 每个音长度 = 情感进行「每音时长」滑块；和弦之间额外留 0.2s 间隔，避免前后和弦粘连
-  return Number(progNoteDuration.value) / 1000 + 0.2;
+  // 节拍鼓点：与涂鸦共享同一节奏 pattern，让情感进行也带上鼓点
+  const wantDrums = drumToggle.checked && rhythm.drums !== 'none';
+  if (wantDrums) {
+    const pattern = DRUM_PATTERNS[rhythm.drums];
+    for (let step = 0; step < DOODLE_STEPS; step++) {
+      const swingDelay = step % 2 === 1 ? rhythm.swing * stepSeconds * 0.5 : 0;
+      const time = baseTime + step * stepSeconds + swingDelay;
+      if (pattern.kick[step]) playKick(time);
+      if (pattern.snare[step]) playSnare(time);
+      if (pattern.hat[step]) playHat(time);
+    }
+  }
 }
 
 function scheduleChordDisplay(chord, startTime, duration, displayOptions) {
@@ -1167,7 +1179,7 @@ function playDoodleOnce() {
   if (currentProgression.length) {
     const padSeconds = 8 * stepSeconds;
     currentProgression.forEach((chord, chordIndex) => {
-      playChordPad(chord, baseTime + chordIndex * padSeconds, padSeconds * 0.98, 0.05);
+      playChordPad(chord, baseTime + chordIndex * padSeconds, padSeconds * 0.98, 0.09);
     });
   }
 
