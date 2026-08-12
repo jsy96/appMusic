@@ -248,13 +248,17 @@ h1 {
   font-size: 0.74rem;
 }
 
-/* 根音 / 调性：从独立面板移入 hero，置于步骤说明之下作为首选控件 */
+/* 根音 / 调性 + 节奏：横向并排置于 hero 步骤说明之下作为全局首选控件 */
 .hero-key {
   position: relative;
   z-index: 1;
   margin-top: 18px;
-  max-width: 360px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  max-width: 580px;
 }
+.hero-key .control { max-width: none; }
 
 /* ========== 按钮 ========== */
 button {
@@ -931,4 +935,195 @@ input[type="file"]:hover { border-color: var(--border-gold); color: var(--text);
 @media (prefers-reduced-motion: reduce) {
   .bg-orb { animation: none; }
   html { scroll-behavior: auto; }
+}
+
+/* ========== 涂鸦旋律卡片 ========== */
+.doodle-card .hint { margin-bottom: 16px; }
+.doodle-card .hint strong { color: var(--gold); font-weight: 800; }
+
+.doodle-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+.doodle-palette {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.palette-swatch {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 9px 6px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  cursor: pointer;
+  transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.palette-swatch:hover { transform: translateY(-2px); border-color: var(--border-gold); }
+.palette-swatch.is-active {
+  border-color: var(--gold);
+  background: var(--surface-2);
+  box-shadow: 0 0 0 2px rgba(255, 203, 107, .25);
+}
+.palette-dot {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, .28);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
+}
+.palette-label {
+  font-size: .72rem;
+  font-weight: 800;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  letter-spacing: .02em;
+}
+.doodle-brush {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-muted);
+  font-size: .82rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.doodle-brush .control-label { font-size: .82rem; }
+.doodle-brush input[type="range"] { width: 110px; }
+.doodle-brush em {
+  font-style: normal;
+  color: var(--gold);
+  font-family: var(--font-mono);
+  font-weight: 800;
+}
+.doodle-brush input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--gold);
+  cursor: pointer;
+}
+
+.doodle-canvas-wrap {
+  position: relative;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  background-color: rgba(8, 9, 15, .7);
+  background-image:
+    linear-gradient(rgba(255, 255, 255, .035), rgba(255, 255, 255, .035)),
+    repeating-linear-gradient(90deg, transparent 0, transparent calc(100%/32 - 1px), rgba(255, 255, 255, .06) calc(100%/32 - 1px), rgba(255, 255, 255, .06) calc(100%/32));
+}
+.doodle-canvas-wrap::before {
+  content: "高八度";
+  position: absolute;
+  left: 10px; top: 6px;
+  z-index: 2;
+  font-size: .68rem;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  letter-spacing: .04em;
+  pointer-events: none;
+}
+.doodle-canvas-wrap::after {
+  content: "低八度";
+  position: absolute;
+  left: 10px; bottom: 6px;
+  z-index: 2;
+  font-size: .68rem;
+  font-family: var(--font-mono);
+  color: var(--text-dim);
+  letter-spacing: .04em;
+  pointer-events: none;
+}
+#doodleCanvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  cursor: crosshair;
+  touch-action: none;
+  position: relative;
+  z-index: 1;
+}
+
+.doodle-melody {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin: 16px 0 4px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, .025);
+  border: 1px solid var(--border);
+  min-height: 56px;
+}
+.doodle-melody-empty {
+  color: var(--text-dim);
+  font-size: .88rem;
+}
+.doodle-note {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  padding: .22em .38em;
+  border-radius: .42em;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, .05);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: .9rem;
+  transition: transform .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease;
+}
+.doodle-note.is-rest {
+  color: var(--text-dim);
+  background: transparent;
+  border-style: dashed;
+}
+.doodle-note.is-active {
+  color: #1a1408;
+  background: var(--grad-warm);
+  border-color: transparent;
+  transform: translateY(-3px) scale(1.14);
+  box-shadow: 0 0 0 3px rgba(255, 203, 107, .22), 0 6px 16px rgba(255, 107, 157, .32);
+}
+/* 小节分隔（第 16 步起为第二小节） */
+.doodle-note[data-bar-sep]::after {
+  content: "";
+  position: absolute;
+  left: -3px; top: 10%; bottom: 10%;
+  width: 2px;
+  border-radius: 2px;
+  background: rgba(255, 203, 107, .55);
+}
+/* 八度点：高八度上方点，低八度下方点 */
+.doodle-note[data-octave="1"]::before,
+.doodle-note[data-octave="2"]::before {
+  content: "";
+  position: absolute;
+  top: -3px; left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .85;
+}
+.doodle-note[data-octave="-1"]::before,
+.doodle-note[data-octave="-2"]::before {
+  content: "";
+  position: absolute;
+  bottom: -3px; left: 50%;
+  transform: translateX(-50%);
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: .85;
 }

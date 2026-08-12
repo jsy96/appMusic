@@ -33,18 +33,22 @@
   <main class="app">
     <section class="hero">
       <div class="hero-text">
-        <p class="eyebrow">Emotion Chord Player</p>
-        <h1>选择情感，<span class="grad-text">自动生成和弦进行</span></h1>
-        <p class="description">每个情感词都有 tension 和 brightness 两个浮点参数，系统会根据它们自动匹配 20 种以上的和弦搭配，输出简谱并连续演奏 30 秒。</p>
+        <p class="eyebrow">Emotion · Doodle · Rhythm</p>
+        <h1>选情感、涂旋律，<span class="grad-text">即兴生成音乐</span></h1>
+        <p class="description">选一个情感词自动匹配和弦进行，在画板里用颜色涂鸦出旋律（颜色代表音高，位置决定八度），再选一种节奏——系统会把旋律叠在情感和弦进行之上，合成一段 30 秒的循环音乐，全部在浏览器里实时完成。</p>
         <ol class="hero-steps">
-          <li><span>01</span> 选择情感与调性</li>
-          <li><span>02</span> 查看生成的和弦与简谱</li>
-          <li><span>03</span> 点击对应卡片内的播放按钮试听</li>
+          <li><span>01</span> 选情感 · 调性 · 节奏</li>
+          <li><span>02</span> 看和弦、涂出旋律</li>
+          <li><span>03</span> 点播放试听搭配效果</li>
         </ol>
         <div class="hero-key">
-          <label class="control control--single">
+          <label class="control">
             <span class="control-label">根音 / 调性</span>
             <select id="rootSelect"></select>
+          </label>
+          <label class="control">
+            <span class="control-label">节奏</span>
+            <select id="rhythmSelect"></select>
           </label>
         </div>
       </div>
@@ -100,6 +104,35 @@
           <button id="stopButton" class="secondary-button" type="button">停止</button>
         </div>
       </article>
+    </section>
+
+    <section class="panel doodle-card">
+      <header class="card-head">
+        <h2>涂鸦旋律</h2>
+        <span class="card-tag">doodle</span>
+      </header>
+      <p class="hint">在下方画板里用颜色任意涂鸦：<strong>颜色代表音高</strong>（不同颜色映射到当前调性的五声音阶不同音级），<strong>从左到右是时间</strong>（共 32 步循环演奏），<strong>越靠上音越高</strong>（分高 / 中 / 低三个八度），空列即休止。系统会把画面翻译成一段旋律，叠在当前「情感和弦进行」之上，并按所选「节奏」演奏。</p>
+      <div class="doodle-tools">
+        <div class="doodle-palette" id="doodlePalette" aria-label="颜色调色板"></div>
+        <label class="doodle-brush">
+          <span class="control-label">笔刷</span>
+          <input id="brushSize" type="range" min="6" max="40" value="16">
+          <em id="brushSizeText">16 px</em>
+        </label>
+        <label class="doodle-brush">
+          <span class="control-label">节拍鼓点</span>
+          <input id="drumToggle" type="checkbox" checked>
+        </label>
+        <button id="clearDoodleButton" class="ghost-button" type="button">清空画板</button>
+      </div>
+      <div class="doodle-canvas-wrap">
+        <canvas id="doodleCanvas" width="720" height="220"></canvas>
+      </div>
+      <div id="doodleMelody" class="doodle-melody"></div>
+      <div class="button-row">
+        <button id="playDoodleButton" class="primary-button" type="button">播放涂鸦旋律</button>
+        <button id="stopDoodleButton" class="secondary-button" type="button">停止</button>
+      </div>
     </section>
 
     <section class="panel audio-card">
