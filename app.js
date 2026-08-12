@@ -1,5 +1,5 @@
 // 应用版本号：每次代码改动后递增（v主.次.YYMMDD-当日序号；同一天改 +1，跨天更新日期并把序号重置为 1）
-const APP_VERSION = 'v1.0.260813-1';
+const APP_VERSION = 'v1.0.260813-2';
 
 const NOTES = [
   { name: 'C', jianpu: '1', frequency: 261.63 },
@@ -435,6 +435,7 @@ function init() {
   randomDoodleButton.addEventListener('click', randomDoodle);
   document.getElementById('playDoodleButton').addEventListener('click', playDoodle);
   document.getElementById('stopDoodleButton').addEventListener('click', stopAll);
+  document.getElementById('exportMidiButton').addEventListener('click', exportMelodyGridMidi);
 
   // 旋律格：pointer 事件统一鼠标 / 触屏，支持拖拽画长音
   tgMelody.addEventListener('pointerdown', onMelodyPointerDown);
@@ -1856,6 +1857,144 @@ function audioBufferToWav(buffer) {
     }
   }
   return new Blob([out], { type: 'audio/wav' });
+}
+
+// ===== 旋律格网 → MIDI 导出（Standard MIDI File, format 1, 480 PPQN） =====
+// 把当前格网状态（旋律 tgNotes + 和弦行 chordRow + 当前节奏鼓点）编码成 .mid 文件下载。
+// 每步 = 16 分音符 = 120 ticks；32 步 = 2 小节（4/4）；swing 让奇数步延后半步的 swing 比例。
+
+const MIDI_PPQN = 480;
+const MIDI_STEP_TICKS = MIDI_PPQN / 4; // 16 分音符 = 120 ticks
+
+// 频率 → MIDI 音号（A4 = 440Hz = 69）
+function freqToMidiNote(freq) {
+  return Math.round(69 + 12 * Math.log2(freq / 440));
+}
+
+// MIDI 变长量（variable-length quantity）
+function midiVarLenBytes(value) {
+  let v = Math.max(0, value | 0);
+  const bytes = [v & 0x7F];
+  v >>= 7;
+  while (v > 0) {
+    bytes.unshift((v & 0x7F) | 0x80);
+    v >>= 7;
+  }
+  return bytes;
+}
+
+function midiAsciiBytes(str) {
+  const out = [];
+  for (let i = 0; i < str.length; i++) out.push(str.charCodeAt(i) & 0xFF);
+  return out;
+}
+function midiU32(v) { return [(v >>> 24) & 0xFF, (v >>> 16) & 0xFF, (v >>> 8) & 0xFF, v & 0xFF]; }
+function midiU16(v) { return [(v >> 8) & 0xFF, v & 0xFF]; }
+
+// 事件工厂：order 用于同一 tick 内的排序（meta/program 0 → noteOff 1 → noteOn 2）
+function midiTempoMeta(tick, bpm) {
+  const us = Math.round(60000000 / bpm);
+  return { tick, order: 0, data: [0xFF, 0x51, 0x03, (us >> 16) & 0xFF, (us >> 8) & 0xFF, us & 0xFF] };
+}
+function midiTimeSigMeta(tick, num, den) {
+  const dPow = Math.round(Math.log2(den));
+  return { tick, order: 0, data: [0xFF, 0x58, 0x04, num & 0xFF, dPow & 0xFF, 24, 8] };
+}
+function midiProgramEvent(tick, ch, prog) {
+  return { tick, order: 0, data: [0xC0 | (ch & 0x0F), prog & 0x7F] };
+}
+function midiNoteOn(tick, ch, note, vel) {
+  return { tick, order: 2, data: [0x90 | (ch & 0x0F), note & 0x7F, vel & 0x7F] };
+}
+function midiNoteOff(tick, ch, note, vel) {
+  return { tick, order: 1, data: [0x80 | (ch & 0x0F), note & 0x7F, vel & 0x7F] };
+}
+
+// 把事件列表编码为一条 track 字节流（按 tick→order 排序，末尾加 End Of Track）
+function midiBuildTrackBytes(events) {
+  const sorted = events.slice().sort((a, b) => a.tick - b.tick || a.order - b.order);
+  const out = [];
+  let lastTick = 0;
+  for (const ev of sorted) {
+    out.push(...midiVarLenBytes(ev.tick - lastTick));
+    lastTick = ev.tick;
+    out.push(...ev.data);
+  }
+  out.push(0x00, 0xFF, 0x2F, 0x00); // End Of Track
+  return out;
+}
+
+function midiChunk(tag, bodyBytes) {
+  return [...midiAsciiBytes(tag), ...midiU32(bodyBytes.length), ...bodyBytes];
+}
+
+// 组装整首 SMF（format 1）并触发本地下载
+function exportMelodyGridMidi() {
+  const rhythm = RHYTHM_PRESETS[Number(rhythmSelect.value)];
+  const swingOffsetTicks = Math.round(rhythm.swing * 0.5 * MIDI_STEP_TICKS);
+  // 每个时间步的绝对 tick（奇数步延后，还原 swing feel）
+  const stepTick = (step) => step * MIDI_STEP_TICKS + (step % 2 === 1 ? swingOffsetTicks : 0);
+
+  // Track 0：速度 / 拍号（tempo map）
+  const trackTempo = [midiTempoMeta(0, rhythm.bpm), midiTimeSigMeta(0, 4, 4)];
+
+  // Track 1：旋律（channel 0 = Acoustic Grand Piano），每个音符持续 len 步
+  const trackMelody = [midiProgramEvent(0, 0, 0)];
+  tgNotes.forEach((note) => {
+    const { deg, oct } = rowToDegreeOctave(note.row);
+    const on = stepTick(note.step);
+    const off = on + note.len * MIDI_STEP_TICKS;
+    const midiNote = freqToMidiNote(degreeToFrequency(deg, oct));
+    trackMelody.push(midiNoteOn(on, 0, midiNote, 100), midiNoteOff(off, 0, midiNote, 0));
+  });
+
+  // Track 2：和弦垫（channel 1 = String Ensemble），和弦行 4 段，每段 8 步 = 2 拍，连奏
+  const segTicks = 8 * MIDI_STEP_TICKS;
+  const trackPad = [midiProgramEvent(0, 1, 48)];
+  chordRow.forEach((deg, seg) => {
+    const chord = degreeToChord(deg);
+    const on = seg * segTicks;
+    const off = on + segTicks; // 同 tick 下 noteOff(order 1) 先于下段 noteOn(order 2)
+    chord.notes.forEach((n) => {
+      const midiNote = freqToMidiNote(n.frequency);
+      trackPad.push(midiNoteOn(on, 1, midiNote, 64), midiNoteOff(off, 1, midiNote, 0));
+    });
+  });
+
+  const tracks = [trackTempo, trackMelody, trackPad];
+
+  // Track 3：鼓点（channel 9 = GM 打击乐），仅在勾选「节拍鼓点」且有 pattern 时导出
+  if (drumToggle.checked && rhythm.drums !== 'none') {
+    const pattern = DRUM_PATTERNS[rhythm.drums];
+    const trackDrum = [];
+    const dur = 30; // 一次击打的 MIDI 音符长度（短促）
+    for (let step = 0; step < DOODLE_STEPS; step++) {
+      const t = stepTick(step);
+      if (pattern.kick[step])  { trackDrum.push(midiNoteOn(t, 9, 36, 110), midiNoteOff(t + dur, 9, 36, 0)); } // 36 = Bass Drum
+      if (pattern.snare[step]) { trackDrum.push(midiNoteOn(t, 9, 38, 100), midiNoteOff(t + dur, 9, 38, 0)); } // 38 = Acoustic Snare
+      if (pattern.hat[step])   { trackDrum.push(midiNoteOn(t, 9, 42, 75),  midiNoteOff(t + dur, 9, 42, 0)); } // 42 = Closed Hi-Hat
+    }
+    tracks.push(trackDrum);
+  }
+
+  // 编码完整 SMF：header（format 1, ntracks, 480 PPQN）+ 每个 track 一个 MTrk chunk
+  const header = midiChunk('MThd', [...midiU16(1), ...midiU16(tracks.length), ...midiU16(MIDI_PPQN)]);
+  const body = [];
+  for (const ev of tracks) body.push(...midiChunk('MTrk', midiBuildTrackBytes(ev)));
+  const bytes = new Uint8Array(header.concat(body));
+
+  const blob = new Blob([bytes], { type: 'audio/midi' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const stamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  a.href = url;
+  a.download = `appmusic_melody_${stamp}.mid`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  window.setTimeout(() => URL.revokeObjectURL(url), 1500);
 }
 
 init();
