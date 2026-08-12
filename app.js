@@ -248,6 +248,8 @@ const progressionOutput = document.getElementById('progressionOutput');
 const progressionJianpu = document.getElementById('progressionJianpu');
 const progressionList = document.getElementById('progressionList');
 const exampleList = document.getElementById('exampleList');
+const audioFileInput = document.getElementById('audioFileInput');
+const audioResult = document.getElementById('audioResult');
 
 function init() {
   NOTES.forEach((note, index) => {
@@ -326,6 +328,7 @@ function init() {
   document.getElementById('playEmotionButton').addEventListener('click', playEmotionProgression);
   document.getElementById('stopButton').addEventListener('click', stopAll);
   document.getElementById('stopManualButton').addEventListener('click', stopAll);
+  audioFileInput.addEventListener('change', handleAudioFile);
 
   updateDisplay();
   updateEmotionProgression();
@@ -842,6 +845,235 @@ function playExample(example, progression, rootIndex, exampleIndex) {
 
   const totalMs = (endTime - audioContext.currentTime + 0.6) * 1000;
   playbackStopTimer = window.setTimeout(stopAll, totalMs);
+}
+
+// ===== 音频情感识别：本地频谱分析 → tension / brightness → 匹配情感 =====
+
+// Krumhansl–Schmuckler 调性轮廓（大调 / 小调），用于估计主音与调式
+const KS_MAJOR = [6.35, 2.23, 3.48, 2.33, 4.38, 4.09, 2.52, 5.19, 2.39, 3.66, 2.29, 2.88];
+const KS_MINOR = [6.33, 2.68, 3.52, 5.38, 2.60, 3.53, 2.54, 4.75, 3.98, 2.69, 1.67, 1.31];
+
+// 迭代式 radix-2 Cooley–Tukey FFT（原地，长度必须为 2 的幂；re / im 等长）
+function fftReal(re, im) {
+  const n = re.length;
+  // 位反转排列
+  for (let i = 1, j = 0; i < n; i++) {
+    let bit = n >> 1;
+    for (; j & bit; bit >>= 1) j ^= bit;
+    j ^= bit;
+    if (i < j) {
+      const tr = re[i]; re[i] = re[j]; re[j] = tr;
+      const ti = im[i]; im[i] = im[j]; im[j] = ti;
+    }
+  }
+  // 蝶形运算
+  for (let len = 2; len <= n; len <<= 1) {
+    const half = len >> 1;
+    const ang = (-2 * Math.PI) / len;
+    const wRe = Math.cos(ang);
+    const wIm = Math.sin(ang);
+    for (let i = 0; i < n; i += len) {
+      let curRe = 1, curIm = 0;
+      for (let k = 0; k < half; k++) {
+        const aRe = re[i + k];
+        const aIm = im[i + k];
+        const bRe = re[i + k + half];
+        const bIm = im[i + k + half];
+        const tRe = bRe * curRe - bIm * curIm;
+        const tIm = bRe * curIm + bIm * curRe;
+        re[i + k] = aRe + tRe;
+        im[i + k] = aIm + tIm;
+        re[i + k + half] = aRe - tRe;
+        im[i + k + half] = aIm - tIm;
+        const nextRe = curRe * wRe - curIm * wIm;
+        curIm = curRe * wIm + curIm * wRe;
+        curRe = nextRe;
+      }
+    }
+  }
+}
+
+// 对解码后的 AudioBuffer 分帧做频谱分析，返回平均特征 + chroma 分布
+function analyzeAudioFeatures(buffer) {
+  const sampleRate = buffer.sampleRate;
+  const channels = buffer.numberOfChannels;
+  // 仅分析前 30 秒，避免长音频阻塞主线程
+  const limit = Math.min(buffer.length, Math.floor(sampleRate * 30));
+  const mono = new Float32Array(limit);
+  for (let c = 0; c < channels; c++) {
+    const data = buffer.getChannelData(c);
+    for (let i = 0; i < limit; i++) mono[i] += data[i] / channels;
+  }
+
+  const frameSize = 2048;
+  const hop = 1024;
+  const half = frameSize >> 1;
+  const hann = new Float32Array(frameSize);
+  for (let i = 0; i < frameSize; i++) {
+    hann[i] = 0.5 * (1 - Math.cos((2 * Math.PI * i) / (frameSize - 1)));
+  }
+
+  const re = new Float32Array(frameSize);
+  const im = new Float32Array(frameSize);
+  const chroma = new Float32Array(12);
+
+  let centroidSum = 0, flatnessSum = 0, rmsSum = 0, zcrSum = 0, frames = 0;
+
+  for (let start = 0; start + frameSize <= limit; start += hop) {
+    let sumSq = 0, zc = 0, prevSign = 0;
+    for (let i = 0; i < frameSize; i++) {
+      const raw = mono[start + i];
+      re[i] = raw * hann[i];
+      im[i] = 0;
+      sumSq += raw * raw;
+      const sign = raw >= 0 ? 1 : -1;
+      if (i > 0 && sign !== prevSign) zc++;
+      prevSign = sign;
+    }
+    fftReal(re, im);
+
+    let magSum = 0, weighted = 0, arith = 0, logSum = 0;
+    for (let i = 0; i < half; i++) {
+      const m = Math.hypot(re[i], im[i]);
+      const freq = (i * sampleRate) / frameSize;
+      magSum += m;
+      weighted += m * freq;
+      arith += m;
+      logSum += Math.log(m + 1e-9);
+      if (freq >= 30 && freq <= 5000 && m > 0) {
+        const midi = 69 + 12 * Math.log2(freq / 440);
+        const pc = ((Math.round(midi) % 12) + 12) % 12;
+        chroma[pc] += m;
+      }
+    }
+    centroidSum += magSum > 0 ? weighted / magSum : 0;
+    flatnessSum += arith > 0 ? Math.exp(logSum / half) / (arith / half) : 0;
+    rmsSum += Math.sqrt(sumSq / frameSize);
+    zcrSum += zc / (frameSize - 1);
+    frames++;
+  }
+
+  if (frames === 0) return null;
+  return {
+    centroid: centroidSum / frames,
+    flatness: flatnessSum / frames,
+    rms: rmsSum / frames,
+    zcr: zcrSum / frames,
+    chroma
+  };
+}
+
+function pearsonCorr(a, b) {
+  const n = a.length;
+  let meanA = 0, meanB = 0;
+  for (let i = 0; i < n; i++) { meanA += a[i]; meanB += b[i]; }
+  meanA /= n; meanB /= n;
+  let num = 0, denA = 0, denB = 0;
+  for (let i = 0; i < n; i++) {
+    const da = a[i] - meanA;
+    const db = b[i] - meanB;
+    num += da * db; denA += da * da; denB += db * db;
+  }
+  return num / (Math.sqrt(denA * denB) || 1e-9);
+}
+
+// 用 Krumhansl–Schmuckler 轮廓匹配主音 + 大小调
+function detectKeyMode(chroma) {
+  let best = { score: -Infinity, tonic: 0, mode: 'major' };
+  for (let tonic = 0; tonic < 12; tonic++) {
+    const rotated = new Array(12);
+    for (let i = 0; i < 12; i++) rotated[i] = chroma[(i + tonic) % 12];
+    const major = pearsonCorr(rotated, KS_MAJOR);
+    const minor = pearsonCorr(rotated, KS_MINOR);
+    if (major > best.score) best = { score: major, tonic, mode: 'major' };
+    if (minor > best.score) best = { score: minor, tonic, mode: 'minor' };
+  }
+  return best;
+}
+
+// 把声学特征映射到 tension / brightness（0~1），为启发式估算
+function featuresToMood(features, keyMode) {
+  const centroid = Math.max(1, features.centroid);
+  const lo = Math.log2(300), hi = Math.log2(3500);
+  let brightness = (Math.log2(centroid) - lo) / (hi - lo);
+  brightness = Math.max(0.05, Math.min(0.97, brightness));
+
+  const energyNorm = Math.min(1, features.rms / 0.25);
+  const zcrNorm = Math.min(1, features.zcr / 0.35);
+  const minorBonus = keyMode.mode === 'minor' ? 1 : 0;
+  let tension = 0.22 + 0.28 * features.flatness + 0.22 * minorBonus + 0.16 * energyNorm + 0.12 * zcrNorm;
+  tension = Math.max(0.05, Math.min(0.97, tension));
+  return { tension, brightness };
+}
+
+function findNearestEmotion(tension, brightness) {
+  let best = { dist: Infinity, emotion: EMOTIONS[0], index: 0 };
+  EMOTIONS.forEach((emotion, index) => {
+    const dist = Math.hypot(emotion.tension - tension, emotion.brightness - brightness);
+    if (dist < best.dist) best = { dist, emotion, index };
+  });
+  return best;
+}
+
+function renderAudioResult(features, keyMode, mood, emotion) {
+  const tonicName = NOTES[keyMode.tonic].name.split(' ')[0];
+  const modeLabel = keyMode.mode === 'minor' ? '小调' : '大调';
+  const tPct = Math.round(mood.tension * 100);
+  const bPct = Math.round(mood.brightness * 100);
+  audioResult.innerHTML = `
+    <div class="metric-row">
+      <span>调式估计：<strong>${tonicName} ${modeLabel}</strong></span>
+      <span>频谱重心：<strong>${Math.round(features.centroid)} Hz</strong></span>
+      <span>频谱平坦度：<strong>${features.flatness.toFixed(2)}</strong></span>
+      <span>匹配情感：<strong>${emotion.name}</strong></span>
+    </div>
+    <div class="audio-meters">
+      <span class="meter">
+        <span class="meter-label">tension</span>
+        <span class="meter-track"><span class="meter-fill meter-fill--tension" style="width:${tPct}%"></span></span>
+        <span class="meter-value">${mood.tension.toFixed(2)}</span>
+      </span>
+      <span class="meter">
+        <span class="meter-label">brightness</span>
+        <span class="meter-track"><span class="meter-fill meter-fill--brightness" style="width:${bPct}%"></span></span>
+        <span class="meter-value">${mood.brightness.toFixed(2)}</span>
+      </span>
+    </div>
+    <p class="hint">已自动套用到「情感和弦进行」，可在上方试听或查看实例片段。该结果为基于本地频谱特征的启发式估计，仅供参考。</p>
+  `;
+}
+
+async function handleAudioFile(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  audioResult.innerHTML = '<p class="hint">正在解码与本地分析，请稍候…</p>';
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    ensureAudioContext();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    // 延后一帧再计算，让"分析中"提示先渲染
+    window.setTimeout(() => {
+      let features;
+      try {
+        features = analyzeAudioFeatures(audioBuffer);
+      } catch (err) {
+        audioResult.innerHTML = '<p class="hint audio-error">分析过程出错，请换一段音频再试。</p>';
+        return;
+      }
+      if (!features) {
+        audioResult.innerHTML = '<p class="hint audio-error">音频太短，无法提取有效特征。</p>';
+        return;
+      }
+      const keyMode = detectKeyMode(features.chroma);
+      const mood = featuresToMood(features, keyMode);
+      const match = findNearestEmotion(mood.tension, mood.brightness);
+      emotionSelect.value = String(match.index);
+      updateEmotionProgression();
+      renderAudioResult(features, keyMode, mood, match.emotion);
+    }, 20);
+  } catch (err) {
+    audioResult.innerHTML = '<p class="hint audio-error">无法解码该音频，请尝试 wav / mp3 / m4a / ogg 等常见格式。</p>';
+  }
 }
 
 init();

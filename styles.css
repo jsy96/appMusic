@@ -121,7 +121,7 @@ body::before {
 .topbar {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 22px 4px;
+  padding: 14px 4px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -156,7 +156,7 @@ body::before {
 .app {
   width: min(1180px, calc(100% - 32px));
   margin: 0 auto;
-  padding: 18px 0 56px;
+  padding: 8px 0 40px;
 }
 
 h1, h2, p { margin-top: 0; }
@@ -164,7 +164,7 @@ h1, h2, p { margin-top: 0; }
 /* ========== Hero ========== */
 .hero {
   position: relative;
-  padding: 44px 40px;
+  padding: 28px 32px;
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-xl);
   background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.03));
@@ -212,8 +212,8 @@ h1 {
   max-width: 640px;
   margin-bottom: 0;
   color: var(--text-muted);
-  font-size: 1.04rem;
-  line-height: 1.8;
+  font-size: 1rem;
+  line-height: 1.6;
 }
 
 .hero-steps {
@@ -221,8 +221,8 @@ h1 {
   z-index: 1;
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin: 24px 0 0;
+  gap: 8px;
+  margin: 18px 0 0;
   padding: 0;
   list-style: none;
 }
@@ -230,7 +230,7 @@ h1 {
   display: inline-flex;
   align-items: center;
   gap: 10px;
-  padding: 9px 16px;
+  padding: 7px 14px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--surface);
@@ -252,14 +252,14 @@ h1 {
 .hero-key {
   position: relative;
   z-index: 1;
-  margin-top: 24px;
+  margin-top: 18px;
   max-width: 360px;
 }
 
 /* ========== 按钮 ========== */
 button {
   font: inherit;
-  padding: 14px 20px;
+  padding: 11px 18px;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
@@ -298,8 +298,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 
 /* ========== 通用 panel ========== */
 .panel {
-  margin-top: 22px;
-  padding: 28px;
+  margin-top: 14px;
+  padding: 20px;
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   background: var(--panel);
@@ -313,7 +313,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 14px;
 }
 .card-head h2,
 .card-head h3 {
@@ -369,8 +369,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .card-controls {
   display: flex;
   flex-wrap: wrap;
-  gap: 16px;
-  margin-bottom: 20px;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 /* 单控件不撑满整行（根音、情感词） */
 .control--single { max-width: 360px; }
@@ -402,7 +402,7 @@ select, input[type="range"] { width: 100%; font: inherit; }
 select {
   appearance: none;
   -webkit-appearance: none;
-  padding: 13px 40px 13px 14px;
+  padding: 11px 38px 11px 12px;
   color: var(--text);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
@@ -451,8 +451,8 @@ input[type="range"]::-moz-range-thumb {
 .grid {
   display: grid;
   grid-template-columns: 0.85fr 1.15fr;
-  gap: 22px;
-  margin-top: 22px;
+  gap: 14px;
+  margin-top: 14px;
 }
 .grid > .panel { margin-top: 0; }
 
@@ -619,21 +619,21 @@ input[type="range"]::-moz-range-thumb {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .hint {
-  margin: 16px 0 0;
+  margin: 12px 0 0;
   color: var(--text-dim);
   font-size: 0.88rem;
-  line-height: 1.7;
+  line-height: 1.6;
 }
 
 /* ========== 参考资料分组 ========== */
-.reference-group { margin-top: 22px; }
+.reference-group { margin-top: 14px; }
 .reference-group-head {
-  margin: 0 0 6px;
-  padding: 4px 6px 18px;
+  margin: 0 0 4px;
+  padding: 2px 4px 12px;
 }
 .reference-group-head h2 {
   margin: 0 0 8px;
@@ -870,6 +870,62 @@ input[type="range"]::-moz-range-thumb {
   background: linear-gradient(135deg, var(--gold-bright), #ff80ad);
   box-shadow: 0 12px 30px rgba(255, 107, 157, 0.38);
 }
+
+/* ========== 音频情感识别卡片 ========== */
+.audio-card .card-controls { align-items: flex-end; }
+.audio-file-control { gap: 8px; }
+input[type="file"] {
+  width: 100%;
+  padding: 10px 12px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  background: rgba(10, 12, 22, 0.5);
+  font-size: 0.86rem;
+  cursor: pointer;
+  transition: border-color 0.18s ease, color 0.18s ease;
+}
+input[type="file"]::-webkit-file-upload-button {
+  margin-right: 12px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: #1a1408;
+  background: var(--grad-warm);
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+input[type="file"]::file-selector-button {
+  margin-right: 12px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  color: #1a1408;
+  background: var(--grad-warm);
+  font-weight: 800;
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+input[type="file"]:hover { border-color: var(--border-gold); color: var(--text); }
+.audio-result { display: grid; gap: 12px; }
+.audio-result .metric-row { margin-bottom: 0; }
+.audio-meters {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid var(--border);
+}
+.audio-meters .meter {
+  display: grid;
+  grid-template-columns: 92px 1fr 48px;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.78rem;
+}
+.audio-error { color: var(--rose); }
 
 /* ========== 减弱动效（无障碍） ========== */
 @media (prefers-reduced-motion: reduce) {
