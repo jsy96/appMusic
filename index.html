@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>情感和弦简谱播放器</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="bg-orbs" aria-hidden="true">
+    <span class="bg-orb bg-orb--gold"></span>
+    <span class="bg-orb bg-orb--magenta"></span>
+    <span class="bg-orb bg-orb--violet"></span>
+  </div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9 18V5l12-2v13"/>
+          <circle cx="6" cy="18" r="3"/>
+          <circle cx="18" cy="16" r="3"/>
+        </svg>
+      </span>
+      <div class="brand-text">
+        <span class="brand-name">EmotionChord</span>
+        <span class="brand-sub">情感和弦简谱播放器</span>
+      </div>
+    </div>
+    <span class="brand-tag">Web Audio · 实时合成</span>
+  </header>
+
+  <main class="app">
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Emotion Chord Player</p>
+        <h1>选择情感，<span class="grad-text">自动生成和弦进行</span></h1>
+        <p class="description">每个情感词都有 tension 和 brightness 两个浮点参数，系统会根据它们自动匹配 20 种以上的和弦搭配，输出简谱并连续演奏 30 秒。</p>
+        <ol class="hero-steps">
+          <li><span>01</span> 选择情感与调性</li>
+          <li><span>02</span> 查看生成的和弦与简谱</li>
+          <li><span>03</span> 点击对应卡片内的播放按钮试听</li>
+        </ol>
+      </div>
+    </section>
+
+    <section class="panel controls" aria-label="根音选择">
+      <header class="card-head">
+        <h2><span class="step-badge">01</span> 根音 / 调性</h2>
+        <span class="card-tag">key</span>
+      </header>
+      <div class="controls-grid">
+        <label class="control control--single">
+          <span class="control-label">根音 / 调性</span>
+          <select id="rootSelect"></select>
+        </label>
+      </div>
+    </section>
+
+    <section class="grid">
+      <article class="panel output-card">
+        <header class="card-head">
+          <h2><span class="step-badge">02</span> 当前和弦</h2>
+          <span class="card-tag">manual</span>
+        </header>
+        <div class="card-controls">
+          <label class="control">
+            <span class="control-label">手动和弦类型</span>
+            <select id="chordTypeSelect"></select>
+          </label>
+          <label class="control control--range">
+            <span class="control-label">琶音速度 <em id="arpSpeedText">180 ms</em></span>
+            <input id="arpSpeed" type="range" min="80" max="420" value="180">
+          </label>
+        </div>
+        <div id="chordName" class="chord-name">C</div>
+        <div id="jianpu" class="jianpu">1 3 5</div>
+        <p id="noteNames" class="note-names">C E G</p>
+        <div class="button-row">
+          <button id="playButton" class="ghost-button" type="button">播放当前和弦</button>
+          <button id="playArpButton" class="ghost-button" type="button">播放当前和弦琶音</button>
+        </div>
+      </article>
+
+      <article class="panel progression-card">
+        <header class="card-head">
+          <h2>情感和弦进行</h2>
+          <span class="card-tag">progression</span>
+        </header>
+        <div class="card-controls">
+          <label class="control control--single">
+            <span class="control-label">情感词</span>
+            <select id="emotionSelect"></select>
+          </label>
+        </div>
+        <div id="emotionStats" class="metric-row"></div>
+        <div id="progressionOutput" class="progression-output"></div>
+        <p id="progressionJianpu" class="progression-jianpu"></p>
+        <p class="hint">点击任一和弦名即可把它载入到「当前和弦」并试听，方便在此基础上单独修改或琶音试听。</p>
+        <label class="inline-range">
+          <span class="control-label">每音时长 <em id="progNoteDurationText">300 ms</em></span>
+          <input id="progNoteDuration" type="range" min="80" max="800" value="300">
+        </label>
+        <div class="button-row">
+          <button id="playEmotionButton" class="primary-button" type="button">播放情感进行</button>
+          <button id="stopButton" class="secondary-button" type="button">停止</button>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel examples-card">
+      <header class="card-head">
+        <h2>实例片段</h2>
+        <span class="card-tag">examples</span>
+      </header>
+      <p class="hint">为当前情感进行列举 1~3 个使用了相似进行或类似色彩的真实音乐作品，并演奏一段贴合该进行的原创示范旋律（旋律声 + 柔和和弦垫）。点击「演奏示范」即可试听。</p>
+      <div id="exampleList" class="example-list"></div>
+    </section>
+
+    <section class="reference-group">
+      <header class="reference-group-head">
+        <h2>参考资料</h2>
+        <p>下面是情感词参数、和弦搭配库与已支持和弦类型的完整清单，供查阅参考。</p>
+      </header>
+      <article class="panel reference">
+        <header class="card-head">
+          <h3>情感词参数列表</h3>
+          <span class="card-tag">24 emotions</span>
+        </header>
+        <div id="emotionList" class="emotion-list"></div>
+      </article>
+      <article class="panel reference">
+        <header class="card-head">
+          <h3>26 组和弦搭配库</h3>
+          <span class="card-tag">library</span>
+        </header>
+        <div id="progressionList" class="progression-library"></div>
+      </article>
+      <article class="panel reference">
+        <header class="card-head">
+          <h3>已支持和弦</h3>
+          <span class="card-tag">22 types</span>
+        </header>
+        <div id="chordList" class="chord-list"></div>
+      </article>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>EmotionChord · 纯前端 Web Audio 应用</span>
+    <span>选择情感 → 匹配和弦 → 生成简谱 → 连续演奏</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
