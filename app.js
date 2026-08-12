@@ -1,5 +1,5 @@
 // 应用版本号：每次代码改动后递增（v主.次.YYMMDD-当日序号；同一天改 +1，跨天更新日期并把序号重置为 1）
-const APP_VERSION = 'v1.0.260812-8';
+const APP_VERSION = 'v1.0.260813-1';
 
 const NOTES = [
   { name: 'C', jianpu: '1', frequency: 261.63 },
@@ -224,22 +224,27 @@ const EXAMPLE_STYLE_LABELS = {
 };
 const SIMPLE_JIANPU = ['1', '#1', '2', '#2', '3', '4', '#4', '5', '#5', '6', '#6', '7'];
 
-// ===== 涂鸦旋律：颜色 → 音高，位置 → 八度，配合情感和弦进行与节奏 =====
+// ===== TheoryTab 风格格网：调式音级 1-7 + Hookpad 七色，配合情感和弦进行与节奏 =====
 
-// 画板离散为 32 步 = 8 拍 = 2 个 4/4 小节；恰好让情感进行 4 和弦各占 8 步（2 拍）
+// 格网列数 = 32 步 = 8 拍 = 2 个 4/4 小节；4 和弦各占 8 步（2 拍），与节奏 / 鼓点同栅格
 const DOODLE_STEPS = 32;
-const PENTATONIC_MAJOR = [0, 2, 4, 7, 9];    // 大调五声：1 2 3 5 6
-const PENTATONIC_MINOR = [0, 3, 5, 7, 10];   // 小调五声：1 b3 4 5 b7
+const TG_MELODY_ROWS = 14;   // 旋律格行数 = 2 个八度 × 7 音级（高八度在上，越上越高音）
 
-// 色板：5 个颜色 → 五声音阶 5 个音级；色相从暖到冷，按 hue 段映射
-// [0,72) 红 → [72,144) 绿 → [144,216) 青 → [216,288) 紫 → [288,360) 品红
-const DOODLE_PALETTE = [
-  { color: '#ef4444', label: '音级 1' },
-  { color: '#22c55e', label: '音级 2' },
-  { color: '#06b6d4', label: '音级 3' },
-  { color: '#8b5cf6', label: '音级 4' },
-  { color: '#ec4899', label: '音级 5' }
-];
+// 大调 / 自然小调 七音（相对根音的半音偏移）：do re mi fa sol la ti
+const SCALE_MAJOR = [0, 2, 4, 5, 7, 9, 11];
+const SCALE_MINOR = [0, 2, 3, 5, 7, 8, 10];
+
+// Hookpad 音级色板（官方）：1红 2橙 3黄 4绿 5蓝 6紫 7粉；旋律音与和弦都按音级着色
+const DEGREE_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#a855f7', '#ec4899'];
+
+// 罗马数字（大小写区分大/小/减三属性），和弦行点击切音级时显示
+const DEGREE_ROMAN_MAJOR = ['I', 'ii', 'iii', 'IV', 'V', 'vi', 'vii°'];
+const DEGREE_ROMAN_MINOR = ['i', 'ii°', 'III', 'iv', 'v', 'VI', 'VII'];
+
+// 各音级的自然音阶三和弦 symbol（点击和弦行选音级 → 自动得该音级 triad）
+// 大调：I ii iii IV V vi vii° ；自然小调：i ii° III iv v VI VII
+const TRIAD_SYMBOL_MAJOR = ['', 'm', 'm', '', '', 'm', 'dim'];
+const TRIAD_SYMBOL_MINOR = ['m', 'dim', '', 'm', 'm', '', ''];
 
 // 节奏预设：BPM + 摇摆比例 + 鼓点风格
 const RHYTHM_PRESETS = [
@@ -319,13 +324,12 @@ const recordButton = document.getElementById('recordButton');
 const recordStatus = document.getElementById('recordStatus');
 const saveAudioButton = document.getElementById('saveAudioButton');
 const rhythmSelect = document.getElementById('rhythmSelect');
-const doodleCanvas = document.getElementById('doodleCanvas');
-const doodleCtx = doodleCanvas.getContext('2d');
 const doodlePalette = document.getElementById('doodlePalette');
-const brushSize = document.getElementById('brushSize');
-const brushSizeText = document.getElementById('brushSizeText');
 const drumToggle = document.getElementById('drumToggle');
-const doodleMelody = document.getElementById('doodleMelody');
+const tgChordRow = document.getElementById('tgChordRow');
+const tgMelody = document.getElementById('tgMelody');
+const tgPopover = document.getElementById('tgPopover');
+const randomDoodleButton = document.getElementById('randomDoodleButton');
 
 function init() {
   document.getElementById('versionBadge').textContent = APP_VERSION;
@@ -384,7 +388,7 @@ function init() {
     updateEmotionProgression();
     clearPlaybackDisplay();
     renderPalette();
-    renderDoodleMelody();
+    renderTheoryGrid();
   });
   chordTypeSelect.addEventListener('change', () => {
     updateDisplay();
@@ -393,8 +397,9 @@ function init() {
   emotionSelect.addEventListener('change', () => {
     updateEmotionProgression();
     clearPlaybackDisplay();
+    initChordRowFromProgression();
     renderPalette();
-    renderDoodleMelody();
+    renderTheoryGrid();
   });
   arpSpeed.addEventListener('input', () => {
     arpSpeedText.textContent = `${arpSpeed.value} ms`;
@@ -416,7 +421,7 @@ function init() {
   updateEmotionProgression();
   updateRangeProgress(arpSpeed);
 
-  // ===== 涂鸦旋律 / 节奏 初始化 =====
+  // ===== TheoryTab 格网 / 节奏 初始化 =====
   RHYTHM_PRESETS.forEach((rhythm, index) => {
     const option = document.createElement('option');
     option.value = String(index);
@@ -426,26 +431,28 @@ function init() {
   rhythmSelect.value = '0';
   rhythmSelect.addEventListener('change', clearPlaybackDisplay);
 
-  brushSize.addEventListener('input', () => {
-    brushSizeText.textContent = `${brushSize.value} px`;
-    updateRangeProgress(brushSize);
-  });
-  updateRangeProgress(brushSize);
-
-  doodleCanvas.addEventListener('mousedown', startDoodleStroke);
-  doodleCanvas.addEventListener('mousemove', moveDoodleStroke);
-  window.addEventListener('mouseup', endDoodleStroke);
-  doodleCanvas.addEventListener('mouseleave', endDoodleStroke);
-  doodleCanvas.addEventListener('touchstart', startDoodleStroke, { passive: false });
-  doodleCanvas.addEventListener('touchmove', moveDoodleStroke, { passive: false });
-  doodleCanvas.addEventListener('touchend', endDoodleStroke);
-
   document.getElementById('clearDoodleButton').addEventListener('click', clearDoodle);
+  randomDoodleButton.addEventListener('click', randomDoodle);
   document.getElementById('playDoodleButton').addEventListener('click', playDoodle);
   document.getElementById('stopDoodleButton').addEventListener('click', stopAll);
 
+  // 旋律格：pointer 事件统一鼠标 / 触屏，支持拖拽画长音
+  tgMelody.addEventListener('pointerdown', onMelodyPointerDown);
+  window.addEventListener('pointermove', onMelodyPointerMove);
+  window.addEventListener('pointerup', onMelodyPointerUp);
+  // 和弦行浮层：点外部或按 Esc 关闭
+  document.addEventListener('click', (event) => {
+    if (activePopoverSeg === null) return;
+    if (tgPopover.contains(event.target) || event.target.closest('.tg-chord')) return;
+    closeChordPopover();
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && activePopoverSeg !== null) closeChordPopover();
+  });
+
+  initChordRowFromProgression();
   renderPalette();
-  renderDoodleMelody();
+  renderTheoryGrid();
 }
 
 function getSelectedChord() {
@@ -974,203 +981,294 @@ function playExample(example, progression, rootIndex, exampleIndex) {
   playbackStopTimer = window.setTimeout(stopAll, totalMs);
 }
 
-// ===== 涂鸦旋律：颜色 → 音高，位置 → 八度，配合情感和弦进行与节奏 =====
+// ===== TheoryTab 风格格网：调式音级 1-7 + Hookpad 七色 =====
 
-let doodleColor = DOODLE_PALETTE[0].color;
-let doodleDrawing = false;
-let lastDoodlePoint = null;
 let noiseBuffer = null;
 
-// 当前情感 brightness < 0.5 用小调五声，否则用大调五声，保证旋律与情感色彩贴合
-function getCurrentScale() {
+// 格网状态
+// tgNotes：旋律音符列表，每个 { row:0-13, step:0-31, len:持续步数(>=1) }（row=音高行，step=起始时间步）
+let tgNotes = [];
+// chordRow[seg] = 该段（共 4 段，每段 8 步）和弦的根音音级 0-6；点击和弦块弹出 1-7 浮层选择
+let chordRow = [0, 4, 5, 3];
+// 和弦行浮层当前段（null=关闭）；拖拽画长音状态 {row,a,b}|null；拖拽预览上次的步集合
+let activePopoverSeg = null;
+let dragState = null;
+let dragPrevRange = [];
+
+// 当前情感 brightness < 0.5 视为小调，否则大调；旋律 / 和弦都据此选音阶与属性
+function isMinorMode() {
   const emotion = EMOTIONS[Number(emotionSelect.value)];
-  return emotion && emotion.brightness < 0.5 ? PENTATONIC_MINOR : PENTATONIC_MAJOR;
+  return !!(emotion && emotion.brightness < 0.5);
+}
+function getCurrentScale7() {
+  return isMinorMode() ? SCALE_MINOR : SCALE_MAJOR;
 }
 
-// 色板渲染：每个颜色显示它对应到当前调性的音名 + 简谱（随根音 / 大小调联动）
+// 行号 ↔ 音级 / 八度：row 0-6 = 高八度(oct1) 从 vii→do，row 7-13 = 中八度(oct0) 从 vii→do
+function rowToDegreeOctave(row) {
+  const oct = row < 7 ? 1 : 0;
+  const deg = 6 - (row % 7);
+  return { deg, oct };
+}
+
+// 音级 + 八度 → 频率（随根音 / 大小调联动）
+function degreeToFrequency(deg, oct) {
+  const rootIndex = Number(rootSelect.value);
+  const scale = getCurrentScale7();
+  const semis = scale[deg] + oct * 12;
+  return NOTES[rootIndex].frequency * Math.pow(2, semis / 12);
+}
+
+// 音级 → 自然音阶三和弦（createChord('' / 'm' / 'dim')，属性随调式自动）
+function degreeToChord(deg) {
+  const rootIndex = Number(rootSelect.value);
+  const scale = getCurrentScale7();
+  const symbols = isMinorMode() ? TRIAD_SYMBOL_MINOR : TRIAD_SYMBOL_MAJOR;
+  return createChord(rootIndex + scale[deg], symbols[deg]);
+}
+
+// 把当前情感进行的前 4 个和弦根音吸附到最近的调内音级，作为格网和弦行的初始值
+function initChordRowFromProgression() {
+  const rootIndex = Number(rootSelect.value);
+  const scale = getCurrentScale7();
+  chordRow = currentProgression.slice(0, 4).map((chord) => {
+    const chordRootIdx = NOTES.indexOf(chord.root);
+    const rel = normalizeNoteIndex(chordRootIdx - rootIndex);
+    let bestDeg = 0;
+    let bestDist = 99;
+    scale.forEach((semi, deg) => {
+      const d = Math.min(Math.abs(semi - rel), 12 - Math.abs(semi - rel));
+      if (d < bestDist) { bestDist = d; bestDeg = deg; }
+    });
+    return bestDeg;
+  });
+  while (chordRow.length < 4) chordRow.push(0);
+}
+
+// 调色板图例：7 个音级 → Hookpad 色 → 当前调的音名；点击预听该音级（中八度）
 function renderPalette() {
   const rootIndex = Number(rootSelect.value);
-  const scale = getCurrentScale();
-  doodlePalette.innerHTML = DOODLE_PALETTE.map((swatch, index) => {
-    const semis = scale[index];
-    const noteIndex = (((rootIndex + semis) % 12) + 12) % 12;
-    const note = NOTES[noteIndex];
-    const active = swatch.color === doodleColor ? ' is-active' : '';
-    return `<button class="palette-swatch${active}" data-color="${swatch.color}" type="button" title="${swatch.label}">
-      <span class="palette-dot" style="background:${swatch.color}"></span>
-      <span class="palette-label">${note.name.split(' ')[0]} · ${note.jianpu}</span>
+  const scale = getCurrentScale7();
+  doodlePalette.innerHTML = DEGREE_COLORS.map((color, deg) => {
+    const noteIndex = normalizeNoteIndex(rootIndex + scale[deg]);
+    const noteName = NOTES[noteIndex].name.split(' ')[0];
+    return `<button class="palette-swatch" data-deg="${deg}" type="button" title="音级 ${deg + 1} · ${noteName}（点击预听）">
+      <span class="palette-dot" style="background:${color}"></span>
+      <span class="palette-label">${deg + 1} · ${noteName}</span>
     </button>`;
   }).join('');
   doodlePalette.querySelectorAll('.palette-swatch').forEach((button) => {
     button.addEventListener('click', () => {
-      doodleColor = button.dataset.color;
-      renderPalette();
+      const deg = Number(button.dataset.deg);
+      ensureAudioContext();
+      playTone(degreeToFrequency(deg, 0), audioContext.currentTime, 0.5, 0.16);
     });
   });
 }
 
-function getDoodlePoint(event) {
-  const rect = doodleCanvas.getBoundingClientRect();
-  const scaleX = doodleCanvas.width / rect.width;
-  const scaleY = doodleCanvas.height / rect.height;
-  const clientX = event.touches ? event.touches[0].clientX : event.clientX;
-  const clientY = event.touches ? event.touches[0].clientY : event.clientY;
-  return { x: (clientX - rect.left) * scaleX, y: (clientY - rect.top) * scaleY };
+// 和弦行：4 段彩色和弦块（每段 8 步 = 2 拍）；点击弹出 1-7 音级浮层选择，自动得该音级 triad
+function renderChordRow() {
+  const minor = isMinorMode();
+  const roman = minor ? DEGREE_ROMAN_MINOR : DEGREE_ROMAN_MAJOR;
+  tgChordRow.innerHTML = chordRow.map((deg, seg) => {
+    const color = DEGREE_COLORS[deg];
+    const chord = degreeToChord(deg);
+    return `<button class="tg-chord" data-seg="${seg}" type="button" style="--chord-color:${color}" title="点击选择音级（当前 ${roman[deg]} · ${formatChordName(chord)}）">
+      <span class="tg-chord-roman">${roman[deg]}</span>
+      <span class="tg-chord-name">${formatChordName(chord)}</span>
+    </button>`;
+  }).join('');
+  tgChordRow.querySelectorAll('.tg-chord').forEach((button) => {
+    button.addEventListener('click', (event) => {
+      event.stopPropagation();
+      openChordPopover(Number(button.dataset.seg), button);
+    });
+  });
 }
 
-function paintDoodleDot(point) {
-  doodleCtx.fillStyle = doodleColor;
-  doodleCtx.beginPath();
-  doodleCtx.arc(point.x, point.y, Number(brushSize.value) / 2, 0, Math.PI * 2);
-  doodleCtx.fill();
+// 和弦行音级浮层：列出 7 个音级（罗马数字 + 和弦名 + 音级色），选哪个就把该段设为该音级
+function openChordPopover(seg, btnEl) {
+  activePopoverSeg = seg;
+  const minor = isMinorMode();
+  const roman = minor ? DEGREE_ROMAN_MINOR : DEGREE_ROMAN_MAJOR;
+  tgPopover.innerHTML = DEGREE_COLORS.map((color, deg) => {
+    const chord = degreeToChord(deg);
+    const cur = deg === chordRow[seg] ? ' is-cur' : '';
+    return `<button class="tg-pop-item${cur}" data-deg="${deg}" type="button" style="--chord-color:${color}">
+      <span class="tg-pop-roman">${roman[deg]}</span>
+      <span class="tg-pop-name">${formatChordName(chord)}</span>
+    </button>`;
+  }).join('');
+  const rect = btnEl.getBoundingClientRect();
+  tgPopover.style.left = `${Math.round(rect.left)}px`;
+  tgPopover.style.top = `${Math.round(rect.bottom + 6)}px`;
+  tgPopover.hidden = false;
+  tgPopover.querySelectorAll('.tg-pop-item').forEach((item) => {
+    item.addEventListener('click', (event) => {
+      event.stopPropagation();
+      chordRow[seg] = Number(item.dataset.deg);
+      closeChordPopover();
+      renderChordRow();
+      ensureAudioContext();
+      playChordPad(degreeToChord(chordRow[seg]), audioContext.currentTime, 0.9, 0.09);
+    });
+  });
 }
 
-function paintDoodleLine(from, to) {
-  doodleCtx.strokeStyle = doodleColor;
-  doodleCtx.lineWidth = Number(brushSize.value);
-  doodleCtx.lineCap = 'round';
-  doodleCtx.lineJoin = 'round';
-  doodleCtx.beginPath();
-  doodleCtx.moveTo(from.x, from.y);
-  doodleCtx.lineTo(to.x, to.y);
-  doodleCtx.stroke();
+function closeChordPopover() {
+  tgPopover.hidden = true;
+  activePopoverSeg = null;
 }
 
-function startDoodleStroke(event) {
-  if (event.cancelable) event.preventDefault();
-  doodleDrawing = true;
-  lastDoodlePoint = getDoodlePoint(event);
-  paintDoodleDot(lastDoodlePoint);
+// 查 (row, step) 落在哪个音符上（无则 undefined）
+function noteAt(row, step) {
+  return tgNotes.find((n) => n.row === row && step >= n.step && step < n.step + n.len);
 }
 
-function moveDoodleStroke(event) {
-  if (!doodleDrawing) return;
-  if (event.cancelable) event.preventDefault();
-  const point = getDoodlePoint(event);
-  paintDoodleLine(lastDoodlePoint, point);
-  lastDoodlePoint = point;
-}
-
-function endDoodleStroke() {
-  if (!doodleDrawing) return;
-  doodleDrawing = false;
-  lastDoodlePoint = null;
-  renderDoodleMelody();
-}
-
-function clearDoodle() {
-  doodleCtx.clearRect(0, 0, doodleCanvas.width, doodleCanvas.height);
-  renderDoodleMelody();
-}
-
-// RGB(0-255) → HSL（h: 0-360，l: 0-1）
-function rgbToHsl(r, g, b) {
-  r /= 255; g /= 255; b /= 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  let h = 0;
-  const l = (max + min) / 2;
-  if (max !== min) {
-    const d = max - min;
-    switch (max) {
-      case r: h = ((g - b) / d + (g < b ? 6 : 0)); break;
-      case g: h = ((b - r) / d + 2); break;
-      case b: h = ((r - g) / d + 4); break;
-    }
-    h *= 60;
-  }
-  return { h, l };
-}
-
-// 把画板离散成 32 列，逐列采样非背景像素，翻译成旋律事件序列
-function translateDoodle() {
-  const { width, height } = doodleCanvas;
-  const imageData = doodleCtx.getImageData(0, 0, width, height);
-  const data = imageData.data;
-  const colWidth = width / DOODLE_STEPS;
-  const scale = getCurrentScale();
+// 旋律格：14 行 × 32 列；点格放 / 删音，拖拽画长音（同行横向跨多步）
+function renderMelodyGrid() {
   const rootIndex = Number(rootSelect.value);
-  const baseFreq = NOTES[rootIndex].frequency;
-  const melody = [];
-
-  for (let step = 0; step < DOODLE_STEPS; step++) {
-    const xStart = Math.floor(step * colWidth);
-    const xEnd = Math.floor((step + 1) * colWidth);
-    let count = 0;
-    let rSum = 0, gSum = 0, bSum = 0, ySum = 0;
-
-    for (let x = xStart; x < xEnd; x += 1) {
-      for (let y = 0; y < height; y += 2) {
-        const idx = (y * width + x) * 4;
-        if (data[idx + 3] > 40) {
-          rSum += data[idx];
-          gSum += data[idx + 1];
-          bSum += data[idx + 2];
-          ySum += y;
-          count += 1;
-        }
+  const scale = getCurrentScale7();
+  let html = '';
+  for (let row = 0; row < TG_MELODY_ROWS; row++) {
+    const { deg, oct } = rowToDegreeOctave(row);
+    const color = DEGREE_COLORS[deg];
+    const noteIndex = normalizeNoteIndex(rootIndex + scale[deg] + oct * 12);
+    const noteName = NOTES[noteIndex].name.split(' ')[0];
+    for (let step = 0; step < DOODLE_STEPS; step++) {
+      const note = noteAt(row, step);
+      const cls = ['tg-cell'];
+      if (note) {
+        cls.push('is-on');
+        cls.push(note.step === step ? 'is-note-start' : 'is-note-cont');
       }
+      if (oct === 1) cls.push('tg-oct-high');
+      if (step > 0 && step % 16 === 0) cls.push('tg-barsep');
+      else if (step % 8 === 0) cls.push('tg-beatsep');
+      const label = note && note.step === step ? String(deg + 1) : '';
+      html += `<button class="${cls.join(' ')}" data-step="${step}" data-row="${row}" style="--deg-color:${color}" title="${noteName}${oct === 1 ? '（高八度）' : ''}">${label}</button>`;
     }
-
-    if (count < 2) {
-      melody.push({ rest: true });
-      continue;
-    }
-
-    const { h } = rgbToHsl(rSum / count, gSum / count, bSum / count);
-    const hue = (h + 360) % 360;
-    const scaleIndex = Math.min(scale.length - 1, Math.floor(hue / (360 / scale.length)));
-    const avgY = ySum / count;
-    // 画板上下分三段 → 高 / 中 / 低八度（canvas y 越小越靠上）
-    let octave;
-    if (avgY < height / 3) octave = 1;
-    else if (avgY > (height * 2) / 3) octave = -1;
-    else octave = 0;
-
-    const semis = scale[scaleIndex];
-    const freq = baseFreq * Math.pow(2, (semis + octave * 12) / 12);
-    const noteIndex = (((rootIndex + semis) % 12) + 12) % 12;
-    // 涂抹覆盖密度 → 力度（音量）
-    const coverage = Math.min(1, count / ((xEnd - xStart) * (height / 2) * 0.18));
-    const gain = 0.1 + coverage * 0.12;
-
-    melody.push({ rest: false, noteIndex, octave, scaleIndex, freq, gain });
   }
-  return melody;
+  tgMelody.innerHTML = html;
 }
 
-function renderDoodleMelody() {
-  const melody = translateDoodle();
-  if (melody.every((event) => event.rest)) {
-    doodleMelody.innerHTML = '<span class="doodle-melody-empty">画板是空的 — 在上方涂鸦后会在这里看到翻译出的旋律简谱</span>';
+// —— 拖拽画长音 ——
+// pointerdown 空格开始（默认 len=1）；pointermove 同行横向扩展预览；pointerup 落定为正式音符
+function onMelodyPointerDown(event) {
+  const cell = event.target.closest('.tg-cell');
+  if (!cell) return;
+  const row = Number(cell.dataset.row);
+  const step = Number(cell.dataset.step);
+  const existing = noteAt(row, step);
+  if (existing) {
+    tgNotes = tgNotes.filter((n) => n !== existing);   // 点已有音符（起始或延续格）→ 删除
+    renderMelodyGrid();
     return;
   }
-  doodleMelody.innerHTML = melody.map((event, step) => {
-    if (event.rest) {
-      return `<span class="doodle-note is-rest" data-step="${step}">·</span>`;
-    }
-    const note = NOTES[event.noteIndex];
-    const barSep = step > 0 && step % 16 === 0 ? ' data-bar-sep' : '';
-    return `<span class="doodle-note" data-step="${step}" data-octave="${event.octave}"${barSep}>${note.jianpu}</span>`;
-  }).join('');
+  dragState = { row, a: step, b: step };
+  dragPrevRange = [];
+  applyDragPreview();
+  if (event.cancelable) event.preventDefault();
 }
 
-function highlightDoodleStep(step) {
-  doodleMelody.querySelectorAll('.doodle-note.is-active').forEach((element) => {
+function onMelodyPointerMove(event) {
+  if (!dragState) return;
+  const el = document.elementFromPoint(event.clientX, event.clientY);
+  const cell = el && el.closest ? el.closest('.tg-cell') : null;
+  if (!cell) return;
+  const row = Number(cell.dataset.row);
+  const step = Number(cell.dataset.step);
+  if (row !== dragState.row) return;       // 只允许同行横向拖拽
+  if (step !== dragState.b) {
+    dragState.b = step;
+    applyDragPreview();
+  }
+}
+
+function onMelodyPointerUp() {
+  if (!dragState) return;
+  const { row, a, b } = dragState;
+  const start = Math.min(a, b);
+  const end = Math.max(a, b);
+  dragState = null;
+  dragPrevRange = [];
+  tgNotes.push({ row, step: start, len: end - start + 1 });
+  renderMelodyGrid();
+  const { deg, oct } = rowToDegreeOctave(row);
+  ensureAudioContext();
+  playTone(degreeToFrequency(deg, oct), audioContext.currentTime, 0.4, 0.16);
+}
+
+// 拖拽预览：在同行 a..b 区间给 cell 临时上色（半透明），离开的撤销
+function applyDragPreview() {
+  if (!dragState) return;
+  const { row } = dragState;
+  dragPrevRange.forEach((s) => {
+    const c = tgMelody.querySelector(`.tg-cell[data-row="${row}"][data-step="${s}"]`);
+    if (c) c.classList.remove('is-drag');
+  });
+  dragPrevRange = [];
+  const lo = Math.min(dragState.a, dragState.b);
+  const hi = Math.max(dragState.a, dragState.b);
+  for (let s = lo; s <= hi; s++) {
+    const c = tgMelody.querySelector(`.tg-cell[data-row="${row}"][data-step="${s}"]`);
+    if (c) c.classList.add('is-drag');
+    dragPrevRange.push(s);
+  }
+}
+
+function renderTheoryGrid() {
+  closeChordPopover();
+  renderChordRow();
+  renderMelodyGrid();
+}
+
+function highlightMelodyStep(step) {
+  document.querySelectorAll('.tg-cell.is-active').forEach((element) => {
     element.classList.remove('is-active');
   });
-  const element = doodleMelody.querySelector(`.doodle-note[data-step="${step}"]`);
-  if (element) element.classList.add('is-active');
+  document.querySelectorAll(`.tg-cell[data-step="${step}"].is-on`).forEach((element) => {
+    element.classList.add('is-active');
+  });
+}
+
+function highlightChordSeg(seg) {
+  document.querySelectorAll('.tg-chord.is-active').forEach((element) => {
+    element.classList.remove('is-active');
+  });
+  document.querySelector(`.tg-chord[data-seg="${seg}"]`)?.classList.add('is-active');
 }
 
 function clearDoodleHighlight() {
-  doodleMelody.querySelectorAll('.doodle-note.is-active').forEach((element) => {
+  document.querySelectorAll('.tg-cell.is-active').forEach((element) => {
+    element.classList.remove('is-active');
+  });
+  document.querySelectorAll('.tg-chord.is-active').forEach((element) => {
     element.classList.remove('is-active');
   });
 }
 
+function clearDoodle() {
+  tgNotes = [];
+  renderMelodyGrid();
+}
+
+// 随机生成一段贴合当前调式的旋律（若干 1-2 步长的音符，偶发休止）
+function randomDoodle() {
+  tgNotes = [];
+  for (let step = 0; step < DOODLE_STEPS; ) {
+    if (Math.random() < 0.35) { step += 1; continue; }        // 休止
+    const row = Math.floor(Math.random() * TG_MELODY_ROWS);
+    const len = Math.random() < 0.3 ? 2 : 1;
+    if (step + len > DOODLE_STEPS) break;
+    tgNotes.push({ row, step, len });
+    step += len;
+  }
+  renderMelodyGrid();
+}
+
 function playDoodle() {
-  if (translateDoodle().every((event) => event.rest)) return; // 空画板不播放
+  if (!tgNotes.length) return; // 空格网不播放
   const rhythm = RHYTHM_PRESETS[Number(rhythmSelect.value)];
   const stepSeconds = 60 / rhythm.bpm / 4; // 每步 = 一个 16 分音符
   const cycleMs = DOODLE_STEPS * stepSeconds * 1000;
@@ -1179,27 +1277,32 @@ function playDoodle() {
 
 function playDoodleOnce() {
   ensureAudioContext();
-  const melody = translateDoodle();
   const rhythm = RHYTHM_PRESETS[Number(rhythmSelect.value)];
   const stepSeconds = 60 / rhythm.bpm / 4;
   const baseTime = audioContext.currentTime + 0.06;
 
-  // 旋律声：逐步演奏；每步都推进简谱光标（含休止符），休止步只静音
-  melody.forEach((event, step) => {
+  // 播放头：逐 step 高亮该列所有被音符覆盖的格（含长音的延续格）
+  for (let step = 0; step < DOODLE_STEPS; step++) {
     const swingDelay = step % 2 === 1 ? rhythm.swing * stepSeconds * 0.5 : 0;
-    const noteStart = baseTime + step * stepSeconds + swingDelay;
-    scheduleTimerAtAudioTime(noteStart, () => highlightDoodleStep(step), 'highlight');
-    if (event.rest) return;
-    playTone(event.freq, noteStart, stepSeconds * 0.92, event.gain);
+    const t = baseTime + step * stepSeconds + swingDelay;
+    scheduleTimerAtAudioTime(t, () => highlightMelodyStep(step), 'highlight');
+  }
+
+  // 旋律声：每个音符按其长度持续发声
+  tgNotes.forEach((note) => {
+    const { deg, oct } = rowToDegreeOctave(note.row);
+    const swingDelay = note.step % 2 === 1 ? rhythm.swing * stepSeconds * 0.5 : 0;
+    const noteStart = baseTime + note.step * stepSeconds + swingDelay;
+    const dur = note.len * stepSeconds * 0.92;
+    playTone(degreeToFrequency(deg, oct), noteStart, dur, 0.16);
   });
 
-  // 和弦垫：把当前情感进行的 4 个和弦铺在 2 小节里，每和弦占 8 步（2 拍）
-  if (currentProgression.length) {
-    const padSeconds = 8 * stepSeconds;
-    currentProgression.forEach((chord, chordIndex) => {
-      playChordPad(chord, baseTime + chordIndex * padSeconds, padSeconds * 0.98, 0.09);
-    });
-  }
+  // 和弦垫：格网和弦行的 4 段，每段 8 步（2 拍），与旋律同栅格
+  const padSeconds = 8 * stepSeconds;
+  chordRow.forEach((deg, seg) => {
+    playChordPad(degreeToChord(deg), baseTime + seg * padSeconds, padSeconds * 0.98, 0.09);
+    scheduleTimerAtAudioTime(baseTime + seg * padSeconds, () => highlightChordSeg(seg), 'highlight');
+  });
 
   // 节拍鼓点
   const wantDrums = drumToggle.checked && rhythm.drums !== 'none';

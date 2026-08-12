@@ -35,7 +35,7 @@
       <div class="hero-text">
         <p class="eyebrow">Emotion · Doodle · Rhythm</p>
         <h1>选情感、涂旋律，<span class="grad-text">即兴生成音乐</span></h1>
-        <p class="description">选一个情感词自动匹配和弦进行，在画板里用颜色涂鸦出旋律（颜色代表音高，位置决定八度），再选一种节奏——系统会把旋律叠在情感和弦进行之上，合成一段 30 秒的循环音乐，全部在浏览器里实时完成。</p>
+        <p class="description">选一个情感词自动匹配和弦进行，在旋律格网里点出旋律（横轴是时间、纵轴是调式音级，颜色对应 Hookpad 音级色），再选一种节奏——系统会把旋律叠在情感和弦进行之上，合成一段 30 秒的循环音乐，全部在浏览器里实时完成。</p>
         <ol class="hero-steps">
           <li><span>01</span> 选情感 · 调性 · 节奏</li>
           <li><span>02</span> 看和弦、涂出旋律</li>
@@ -87,25 +87,22 @@
 
     <section class="panel doodle-card">
       <header class="card-head">
-        <h2>涂鸦旋律</h2>
-        <span class="card-tag">doodle</span>
+        <h2>旋律格网</h2>
+        <span class="card-tag">theorytab</span>
       </header>
-      <p class="hint">在下方画板里用颜色任意涂鸦：<strong>颜色代表音高</strong>（不同颜色映射到当前调性的五声音阶不同音级），<strong>从左到右是时间</strong>（共 32 步循环演奏），<strong>越靠上音越高</strong>（分高 / 中 / 低三个八度），空列即休止。系统会把画面翻译成一段旋律，叠在当前「情感和弦进行」之上，并按所选「节奏」演奏。</p>
+      <p class="hint">参考 HookTheory TheoryTab 的格网：<strong>上方和弦行</strong>显示当前「情感和弦进行」的 4 个和弦（按音级 1–7 上色），<strong>点击和弦块</strong>在 I→ii→…→vii° 间循环切换音级、自动得该音级的自然三和弦；<strong>下方旋律格</strong>纵轴是音高（两个八度 × 7 个调式音级，越上越高）、横轴是时间（32 步 = 2 小节循环），<strong>点击格子放 / 删音</strong>，空列即休止。播放时旋律叠在格网和弦行 + 所选节奏之上。颜色对应 Hookpad 音级色（1红 2橙 3黄 4绿 5蓝 6紫 7粉）。</p>
       <div class="doodle-tools">
-        <div class="doodle-palette" id="doodlePalette" aria-label="颜色调色板"></div>
-        <label class="doodle-brush">
-          <span class="control-label">笔刷</span>
-          <input id="brushSize" type="range" min="6" max="40" value="16">
-          <em id="brushSizeText">16 px</em>
-        </label>
-        <button id="clearDoodleButton" class="ghost-button" type="button">清空画板</button>
+        <div class="doodle-palette" id="doodlePalette" aria-label="音级色板图例"></div>
+        <button id="clearDoodleButton" class="ghost-button" type="button">清空旋律</button>
+        <button id="randomDoodleButton" class="ghost-button" type="button">随机旋律</button>
       </div>
-      <div class="doodle-canvas-wrap">
-        <canvas id="doodleCanvas" width="720" height="220"></canvas>
+      <div class="theory-grid">
+        <div class="tg-chord-row" id="tgChordRow"></div>
+        <div class="tg-melody" id="tgMelody"></div>
+        <div class="tg-popover" id="tgPopover" hidden></div>
       </div>
-      <div id="doodleMelody" class="doodle-melody"></div>
       <div class="button-row">
-        <button id="playDoodleButton" class="primary-button" type="button">播放涂鸦旋律</button>
+        <button id="playDoodleButton" class="primary-button" type="button">播放格网</button>
         <button id="stopDoodleButton" class="secondary-button" type="button">停止</button>
       </div>
     </section>
@@ -150,7 +147,7 @@
         <div id="emotionStats" class="metric-row"></div>
         <div id="progressionOutput" class="progression-output"></div>
         <p id="progressionJianpu" class="progression-jianpu"></p>
-        <p class="hint">点击任一和弦名即可把它载入到「当前和弦」并试听。播放时会跟随顶部选择的「节奏」（BPM 与鼓点），与涂鸦旋律共享同一节拍栅格。</p>
+        <p class="hint">点击任一和弦名即可把它载入到「当前和弦」并试听。播放时会跟随顶部选择的「节奏」（BPM 与鼓点），与旋律格网共享同一节拍栅格。</p>
         <div class="button-row">
           <button id="playEmotionButton" class="primary-button" type="button">播放情感进行</button>
           <button id="stopButton" class="secondary-button" type="button">停止</button>

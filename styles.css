@@ -1061,179 +1061,172 @@ button:disabled:hover { transform: none; }
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
   margin-bottom: 14px;
 }
 .doodle-palette {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
 }
 .palette-swatch {
   display: inline-flex;
   flex-direction: column;
   align-items: center;
-  gap: 5px;
-  padding: 7px 9px 6px;
+  gap: 4px;
+  padding: 5px 8px 4px;
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   background: var(--surface);
   cursor: pointer;
-  transition: transform .15s ease, border-color .15s ease, background .15s ease, box-shadow .15s ease;
+  transition: transform .15s ease, border-color .15s ease, box-shadow .15s ease;
 }
 .palette-swatch:hover { transform: translateY(-2px); border-color: var(--border-gold); }
-.palette-swatch.is-active {
-  border-color: var(--gold);
-  background: var(--surface-2);
-  box-shadow: 0 0 0 2px rgba(255, 203, 107, .25);
-}
 .palette-dot {
-  width: 22px;
-  height: 22px;
+  width: 18px;
+  height: 18px;
   border-radius: 50%;
   border: 1px solid rgba(255, 255, 255, .28);
   box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
 }
 .palette-label {
-  font-size: .72rem;
+  font-size: .68rem;
   font-weight: 800;
   font-family: var(--font-mono);
   color: var(--text-muted);
   letter-spacing: .02em;
 }
-.doodle-brush {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  color: var(--text-muted);
-  font-size: .82rem;
-  font-weight: 700;
-  white-space: nowrap;
-}
-.doodle-brush .control-label { font-size: .82rem; }
-.doodle-brush input[type="range"] { width: 110px; }
-.doodle-brush em {
-  font-style: normal;
-  color: var(--gold);
-  font-family: var(--font-mono);
-  font-weight: 800;
-}
 
-.doodle-canvas-wrap {
-  position: relative;
+/* ========== TheoryTab 风格格网 ========== */
+.theory-grid {
+  border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   overflow: hidden;
-  border: 1px solid var(--border-strong);
   background-color: rgba(8, 9, 15, .7);
-  background-image:
-    linear-gradient(rgba(255, 255, 255, .035), rgba(255, 255, 255, .035)),
-    repeating-linear-gradient(90deg, transparent 0, transparent calc(100%/32 - 1px), rgba(255, 255, 255, .06) calc(100%/32 - 1px), rgba(255, 255, 255, .06) calc(100%/32));
-}
-.doodle-canvas-wrap::before {
-  content: "高八度";
-  position: absolute;
-  left: 10px; top: 6px;
-  z-index: 2;
-  font-size: .68rem;
-  font-family: var(--font-mono);
-  color: var(--text-dim);
-  letter-spacing: .04em;
-  pointer-events: none;
-}
-.doodle-canvas-wrap::after {
-  content: "低八度";
-  position: absolute;
-  left: 10px; bottom: 6px;
-  z-index: 2;
-  font-size: .68rem;
-  font-family: var(--font-mono);
-  color: var(--text-dim);
-  letter-spacing: .04em;
-  pointer-events: none;
-}
-#doodleCanvas {
-  display: block;
-  width: 100%;
-  height: auto;
-  cursor: crosshair;
-  touch-action: none;
-  position: relative;
-  z-index: 1;
+  background-image: linear-gradient(rgba(255, 255, 255, .035), rgba(255, 255, 255, .035));
 }
 
-.doodle-melody {
+/* 和弦行：4 段，每段占 8 步（2 拍）；颜色 = 该段和弦的音级色 */
+.tg-chord-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2px;
+  padding: 8px;
+  border-bottom: 2px solid var(--border-strong);
+}
+.tg-chord {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px;
-  margin: 16px 0 4px;
-  padding: 12px 14px;
-  border-radius: var(--radius-md);
-  background: rgba(255, 255, 255, .025);
-  border: 1px solid var(--border);
-  min-height: 56px;
-}
-.doodle-melody-empty {
-  color: var(--text-dim);
-  font-size: .88rem;
-}
-.doodle-note {
-  position: relative;
-  display: inline-flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-width: 1.5em;
-  padding: .22em .38em;
-  border-radius: .42em;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, .05);
-  color: var(--text);
+  gap: 2px;
+  padding: 8px 4px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--chord-color) 22%, transparent);
+  color: var(--chord-color);
+  cursor: pointer;
+  transition: transform .15s ease, background .15s ease, box-shadow .15s ease;
+}
+.tg-chord:hover {
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--chord-color) 38%, transparent);
+}
+.tg-chord.is-active {
+  background: color-mix(in srgb, var(--chord-color) 55%, transparent);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--chord-color) 70%, transparent), 0 4px 12px rgba(0, 0, 0, .4);
+  transform: translateY(-1px) scale(1.02);
+}
+.tg-chord-roman {
   font-family: var(--font-mono);
   font-weight: 800;
-  font-size: .9rem;
-  transition: transform .15s ease, background .15s ease, color .15s ease, box-shadow .15s ease, border-color .15s ease;
+  font-size: 1.05rem;
+  letter-spacing: .02em;
 }
-.doodle-note.is-rest {
-  color: var(--text-dim);
-  background: transparent;
-  border-style: dashed;
+.tg-chord-name {
+  font-size: .72rem;
+  font-weight: 700;
+  opacity: .85;
 }
-.doodle-note.is-active {
+
+/* 旋律格：14 行 × 32 列；行 = 音高（两个八度 × 7 音级），列 = 时间步 */
+.tg-melody {
+  display: grid;
+  grid-template-columns: repeat(32, 1fr);
+  grid-auto-rows: 1fr;
+  gap: 2px;
+  padding: 8px;
+  aspect-ratio: 32 / 7;
+}
+.tg-cell {
+  border: 1px solid rgba(255, 255, 255, .06);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, .025);
   color: #1a1408;
-  background: var(--grad-warm);
-  border-color: transparent;
-  transform: translateY(-3px) scale(1.14);
-  box-shadow: 0 0 0 3px rgba(255, 203, 107, .22), 0 6px 16px rgba(255, 107, 157, .32);
+  font-family: var(--font-mono);
+  font-weight: 800;
+  font-size: .72rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  transition: background .12s ease, transform .12s ease, box-shadow .12s ease, border-color .12s ease;
 }
-/* 小节分隔（第 16 步起为第二小节） */
-.doodle-note[data-bar-sep]::after {
-  content: "";
-  position: absolute;
-  left: -3px; top: 10%; bottom: 10%;
-  width: 2px;
-  border-radius: 2px;
-  background: rgba(255, 203, 107, .55);
+.tg-cell:hover {
+  background: color-mix(in srgb, var(--deg-color) 32%, transparent);
+  border-color: var(--deg-color);
 }
-/* 八度点：高八度上方点，低八度下方点 */
-.doodle-note[data-octave="1"]::before,
-.doodle-note[data-octave="2"]::before {
-  content: "";
-  position: absolute;
-  top: -3px; left: 50%;
-  transform: translateX(-50%);
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: .85;
+/* 高八度区底色略亮，与中八度区分 */
+.tg-cell.tg-oct-high { background: rgba(255, 255, 255, .045); }
+.tg-cell.tg-oct-high:hover { background: color-mix(in srgb, var(--deg-color) 32%, transparent); }
+.tg-cell.is-on {
+  background: var(--deg-color);
+  border-color: color-mix(in srgb, var(--deg-color) 55%, white);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .35);
 }
-.doodle-note[data-octave="-1"]::before,
-.doodle-note[data-octave="-2"]::before {
-  content: "";
-  position: absolute;
-  bottom: -3px; left: 50%;
-  transform: translateX(-50%);
-  width: 4px; height: 4px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: .85;
+.tg-cell.is-active {
+  transform: scale(1.2);
+  box-shadow: 0 0 0 2px #fff, 0 4px 10px rgba(0, 0, 0, .5);
+  z-index: 2;
 }
+/* 拍线（每 8 步）与小节线（第 17 步起） */
+.tg-cell.tg-beatsep { border-left: 2px solid rgba(255, 255, 255, .12); }
+.tg-cell.tg-barsep { border-left: 2px solid rgba(255, 203, 107, .5); }
+/* 拖拽画长音：触屏禁止滚动 + 拖拽预览半透明色块 */
+.tg-melody { touch-action: none; }
+.tg-cell.is-drag {
+  background: color-mix(in srgb, var(--deg-color) 48%, transparent);
+  border-color: var(--deg-color);
+}
+
+/* ========== 和弦行音级浮层 ========== */
+.tg-popover {
+  position: fixed;
+  z-index: 50;
+  display: grid;
+  grid-template-columns: repeat(7, auto);
+  gap: 4px;
+  padding: 8px;
+  border-radius: var(--radius-md);
+  background: rgba(18, 20, 30, .96);
+  border: 1px solid var(--border-strong);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .55);
+}
+.tg-popover[hidden] { display: none; }
+.tg-pop-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--chord-color) 20%, transparent);
+  color: var(--chord-color);
+  cursor: pointer;
+  min-width: 46px;
+  transition: transform .12s ease, background .12s ease;
+}
+.tg-pop-item:hover { transform: translateY(-2px); background: color-mix(in srgb, var(--chord-color) 42%, transparent); }
+.tg-pop-item.is-cur { border-color: var(--chord-color); box-shadow: 0 0 0 2px color-mix(in srgb, var(--chord-color) 55%, transparent); }
+.tg-pop-roman { font-family: var(--font-mono); font-weight: 800; font-size: 1rem; }
+.tg-pop-name { font-size: .68rem; font-weight: 700; opacity: .85; }
