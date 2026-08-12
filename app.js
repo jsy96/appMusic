@@ -1,5 +1,5 @@
 // 应用版本号：每次代码改动后递增（v主.次.YYMMDD-当日序号；同一天改 +1，跨天更新日期并把序号重置为 1）
-const APP_VERSION = 'v1.0.260812-3';
+const APP_VERSION = 'v1.0.260812-6';
 
 const NOTES = [
   { name: 'C', jianpu: '1', frequency: 261.63 },
@@ -1466,7 +1466,7 @@ function renderAudioResult(features, keyMode, mood, emotion) {
         <span class="meter-value">${mood.brightness.toFixed(2)}</span>
       </span>
     </div>
-    <p class="hint">已自动套用到「情感和弦进行」，可在上方试听或查看实例片段。该结果为基于本地频谱特征的启发式估计，仅供参考。</p>
+    <p class="hint">已自动套用到「情感和弦进行」，可在下方试听或查看实例片段。该结果为基于本地频谱特征的启发式估计，仅供参考。</p>
   `;
 }
 

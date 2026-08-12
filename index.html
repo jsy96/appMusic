@@ -61,6 +61,46 @@
       </div>
     </section>
 
+    <section class="panel audio-card">
+      <header class="card-head">
+        <h2>音频情感识别</h2>
+        <span class="card-tag">analyze</span>
+      </header>
+      <p class="hint">上传一段音频（wav / mp3 / m4a 等），系统会在浏览器本地分析频谱特征（频谱重心、频谱平坦度、能量、过零率）与调式，估算 tension / brightness 并自动匹配最接近的情感词、刷新下方的「情感和弦进行」。音频仅在本地处理，不会上传任何服务器。建议使用 30 秒以内的片段。</p>
+      <div class="card-controls">
+        <label class="control control--single audio-file-control">
+          <span class="control-label">选择音频文件</span>
+          <input id="audioFileInput" type="file" accept="audio/*">
+        </label>
+      </div>
+      <div id="audioResult" class="audio-result"></div>
+    </section>
+
+    <section class="panel doodle-card">
+      <header class="card-head">
+        <h2>涂鸦旋律</h2>
+        <span class="card-tag">doodle</span>
+      </header>
+      <p class="hint">在下方画板里用颜色任意涂鸦：<strong>颜色代表音高</strong>（不同颜色映射到当前调性的五声音阶不同音级），<strong>从左到右是时间</strong>（共 32 步循环演奏），<strong>越靠上音越高</strong>（分高 / 中 / 低三个八度），空列即休止。系统会把画面翻译成一段旋律，叠在当前「情感和弦进行」之上，并按所选「节奏」演奏。</p>
+      <div class="doodle-tools">
+        <div class="doodle-palette" id="doodlePalette" aria-label="颜色调色板"></div>
+        <label class="doodle-brush">
+          <span class="control-label">笔刷</span>
+          <input id="brushSize" type="range" min="6" max="40" value="16">
+          <em id="brushSizeText">16 px</em>
+        </label>
+        <button id="clearDoodleButton" class="ghost-button" type="button">清空画板</button>
+      </div>
+      <div class="doodle-canvas-wrap">
+        <canvas id="doodleCanvas" width="720" height="220"></canvas>
+      </div>
+      <div id="doodleMelody" class="doodle-melody"></div>
+      <div class="button-row">
+        <button id="playDoodleButton" class="primary-button" type="button">播放涂鸦旋律</button>
+        <button id="stopDoodleButton" class="secondary-button" type="button">停止</button>
+      </div>
+    </section>
+
     <section class="grid">
       <article class="panel output-card">
         <header class="card-head">
@@ -109,46 +149,6 @@
       </article>
     </section>
 
-    <section class="panel doodle-card">
-      <header class="card-head">
-        <h2>涂鸦旋律</h2>
-        <span class="card-tag">doodle</span>
-      </header>
-      <p class="hint">在下方画板里用颜色任意涂鸦：<strong>颜色代表音高</strong>（不同颜色映射到当前调性的五声音阶不同音级），<strong>从左到右是时间</strong>（共 32 步循环演奏），<strong>越靠上音越高</strong>（分高 / 中 / 低三个八度），空列即休止。系统会把画面翻译成一段旋律，叠在当前「情感和弦进行」之上，并按所选「节奏」演奏。</p>
-      <div class="doodle-tools">
-        <div class="doodle-palette" id="doodlePalette" aria-label="颜色调色板"></div>
-        <label class="doodle-brush">
-          <span class="control-label">笔刷</span>
-          <input id="brushSize" type="range" min="6" max="40" value="16">
-          <em id="brushSizeText">16 px</em>
-        </label>
-        <button id="clearDoodleButton" class="ghost-button" type="button">清空画板</button>
-      </div>
-      <div class="doodle-canvas-wrap">
-        <canvas id="doodleCanvas" width="720" height="220"></canvas>
-      </div>
-      <div id="doodleMelody" class="doodle-melody"></div>
-      <div class="button-row">
-        <button id="playDoodleButton" class="primary-button" type="button">播放涂鸦旋律</button>
-        <button id="stopDoodleButton" class="secondary-button" type="button">停止</button>
-      </div>
-    </section>
-
-    <section class="panel audio-card">
-      <header class="card-head">
-        <h2>音频情感识别</h2>
-        <span class="card-tag">analyze</span>
-      </header>
-      <p class="hint">上传一段音频（wav / mp3 / m4a 等），系统会在浏览器本地分析频谱特征（频谱重心、频谱平坦度、能量、过零率）与调式，估算 tension / brightness 并自动匹配最接近的情感词、刷新上方的「情感和弦进行」。音频仅在本地处理，不会上传任何服务器。建议使用 30 秒以内的片段。</p>
-      <div class="card-controls">
-        <label class="control control--single audio-file-control">
-          <span class="control-label">选择音频文件</span>
-          <input id="audioFileInput" type="file" accept="audio/*">
-        </label>
-      </div>
-      <div id="audioResult" class="audio-result"></div>
-    </section>
-
     <section class="panel examples-card">
       <header class="card-head">
         <h2>实例片段</h2>
@@ -190,7 +190,7 @@
   <footer class="footer">
     <span>EmotionChord · 纯前端 Web Audio 应用</span>
     <span>选择情感 → 匹配和弦 → 生成简谱 → 连续演奏</span>
-    <span class="version-badge" id="versionBadge">v1.0.260812-1</span>
+    <span class="version-badge" id="versionBadge">v1.0.260812-6</span>
   </footer>
 
   <script src="app.js"></script>

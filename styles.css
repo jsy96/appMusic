@@ -360,6 +360,32 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   -webkit-backdrop-filter: blur(18px);
 }
 
+/* 各卡片用不同颜色框线区分（半透明强调色 + 同色微辉，让色相在深底上更清晰） */
+.audio-card {
+  border-color: rgba(94, 234, 212, 0.5);        /* 青 */
+  box-shadow: var(--shadow-card), 0 0 30px rgba(94, 234, 212, 0.14);
+}
+.doodle-card {
+  border-color: rgba(167, 139, 250, 0.5);       /* 紫 */
+  box-shadow: var(--shadow-card), 0 0 30px rgba(167, 139, 250, 0.14);
+}
+.output-card {
+  border-color: rgba(255, 203, 107, 0.5);       /* 金 */
+  box-shadow: var(--shadow-card), 0 0 30px rgba(255, 203, 107, 0.14);
+}
+.progression-card {
+  border-color: rgba(255, 107, 157, 0.5);       /* 品红 */
+  box-shadow: var(--shadow-card), 0 0 30px rgba(255, 107, 157, 0.14);
+}
+.examples-card {
+  border-color: rgba(251, 113, 133, 0.5);       /* 玫红 */
+  box-shadow: var(--shadow-card), 0 0 30px rgba(251, 113, 133, 0.14);
+}
+.reference {
+  border-color: rgba(108, 140, 255, 0.5);       /* 靛蓝（参考资料三张同色，作为同组） */
+  box-shadow: var(--shadow-card), 0 0 30px rgba(108, 140, 255, 0.14);
+}
+
 .card-head {
   display: flex;
   align-items: center;
@@ -510,6 +536,13 @@ input[type="range"]::-moz-range-thumb {
     radial-gradient(420px 220px at 100% 0%, rgba(255, 203, 107, 0.12), transparent 70%),
     var(--panel);
 }
+/* 当前和弦卡片：收紧内部间距，让排列更紧凑（仅作用于该卡片，不影响其它卡片） */
+.output-card .card-head { margin-bottom: 10px; }
+.output-card .card-controls { gap: 10px; margin-bottom: 10px; }
+.output-card .chord-name { margin: 2px 0 8px; }
+.output-card .jianpu { padding: 10px 14px; gap: 8px; }
+.output-card .note-names { margin: 8px 0 0; }
+.output-card .button-row { gap: 10px; margin-top: 10px; }
 .chord-name {
   margin: 4px 0 18px;
   font-size: clamp(3.2rem, 9vw, 6.5rem);
