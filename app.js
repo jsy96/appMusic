@@ -1,5 +1,5 @@
 // 应用版本号：每次代码改动后递增（v主.次.YYMMDD-当日序号；同一天改 +1，跨天更新日期并把序号重置为 1）
-const APP_VERSION = 'v1.0.260812-7';
+const APP_VERSION = 'v1.0.260812-8';
 
 const NOTES = [
   { name: 'C', jianpu: '1', frequency: 261.63 },

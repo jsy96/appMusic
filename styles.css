@@ -360,28 +360,28 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
   -webkit-backdrop-filter: blur(18px);
 }
 
-/* 各卡片用不同颜色框线区分（加粗描边 + 同色辉光，让色相在深底上更显眼） */
-.audio-card {
-  border: 1.5px solid rgba(94, 234, 212, 0.85);
-  box-shadow: var(--shadow-card), 0 0 34px rgba(94, 234, 212, 0.3);
-}
-.doodle-card {
-  border: 1.5px solid rgba(167, 139, 250, 0.85);
-  box-shadow: var(--shadow-card), 0 0 34px rgba(167, 139, 250, 0.3);
-}
-.output-card {
-  border: 1.5px solid rgba(255, 203, 107, 0.85);
-  box-shadow: var(--shadow-card), 0 0 34px rgba(255, 203, 107, 0.3);
-}
-.progression-card {
+/* 各卡片框线按暖 / 冷交替（金/品红/玫红=暖，青/紫/靛=冷），加粗描边 + 同色辉光 */
+.audio-card {           /* 暖 · 品红 */
   border: 1.5px solid rgba(255, 107, 157, 0.85);
   box-shadow: var(--shadow-card), 0 0 34px rgba(255, 107, 157, 0.3);
 }
-.examples-card {
+.doodle-card {          /* 冷 · 青 */
+  border: 1.5px solid rgba(94, 234, 212, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(94, 234, 212, 0.3);
+}
+.output-card {          /* 暖 · 金 */
+  border: 1.5px solid rgba(255, 203, 107, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(255, 203, 107, 0.3);
+}
+.progression-card {     /* 冷 · 紫 */
+  border: 1.5px solid rgba(167, 139, 250, 0.85);
+  box-shadow: var(--shadow-card), 0 0 34px rgba(167, 139, 250, 0.3);
+}
+.examples-card {        /* 暖 · 玫红 */
   border: 1.5px solid rgba(251, 113, 133, 0.85);
   box-shadow: var(--shadow-card), 0 0 34px rgba(251, 113, 133, 0.3);
 }
-.reference {
+.reference {            /* 冷 · 靛蓝（参考资料三张同色，作为同组） */
   border: 1.5px solid rgba(108, 140, 255, 0.85);
   box-shadow: var(--shadow-card), 0 0 34px rgba(108, 140, 255, 0.3);
 }
